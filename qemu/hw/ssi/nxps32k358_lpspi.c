@@ -1,7 +1,7 @@
 #include "qemu/osdep.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
-#include "hw/ssi/nxps32k358_spi.h"
+#include "hw/ssi/nxps32k358_lpspi.h"
 #include "migration/vmstate.h"
 
 #ifndef NXP_SPI_ERR_DEBUG
@@ -9,27 +9,39 @@
 #endif
 
 // REVISONE 1 -- 20 MAY
-#define DB_PRINT_L(lvl, fmt, args...) do { \
-    if (NXP_SPI_ERR_DEBUG >= lvl) { \
-        qemu_log("%s: " fmt, __func__, ## args); \
-    } \
-} while (0)
+#define DB_PRINT_L(lvl, fmt, args...)               \
+    do                                              \
+    {                                               \
+        if (NXP_SPI_ERR_DEBUG >= lvl)               \
+        {                                           \
+            qemu_log("%s: " fmt, __func__, ##args); \
+        }                                           \
+    } while (0)
 
-#define DB_PRINT(fmt, args...) DB_PRINT_L(1, fmt, ## args)
+#define DB_PRINT(fmt, args...) DB_PRINT_L(1, fmt, ##args)
 
+// Modificare i reset, per reference a pagina 2862 del Reference Manual
 static void nxps32k358_spi_reset(DeviceState *dev)
 {
     NXPS32K358SPIState *s = nxps32k358_SPI(dev);
 
-    s->spi_cr1 = 0x00000000;
-    s->spi_cr2 = 0x00000000;
-    s->spi_sr = 0x0000000A;
-    s->spi_dr = 0x0000000C;
-    s->spi_crcpr = 0x00000007;
-    s->spi_rxcrcr = 0x00000000;
-    s->spi_txcrcr = 0x00000000;
-    s->spi_i2scfgr = 0x00000000;
-    s->spi_i2spr = 0x00000002;
+    s->lpspi_verid = 0x02000004; // Version ID, solitamente fisso, puoi impostare il valore reale se vuoi
+    s->lpspi_param = 0x00080202; // Parameter Register, idem
+    s->lpspi_cr = 0x00000000;
+    s->lpspi_sr = 0x00000001; // Di solito TDF=1 dopo reset, controlla RM
+    s->lpspi_ier = 0x00000000;
+    s->lpspi_der = 0x00000000;
+    s->lpspi_cfgr0 = 0x00000000;
+    s->lpspi_cfgr1 = 0x00000000;
+    // s->lpspi_dmr0 = 0x00000000; // Se usi DMR0/1, decommenta
+    // s->lpspi_dmr1 = 0x00000000;
+    s->lpspi_ccr = 0x00000000;
+    s->lpspi_fcr = 0x00000000;
+    s->lpspi_fsr = 0x00000003; // TXCOUNT=0, RXCOUNT=0, TFFF=1, RFFF=1 tipico reset
+    s->lpspi_tcr = 0x0000001F;
+    s->lpspi_tdr = 0x00000000;
+    s->lpspi_rsr = 0x00000002; // RDF=1 tipico reset
+    s->lpspi_rdr = 0x00000000;
 }
 static void nxps32k358_spi_transfer(nxps32k358SPIState *s)
 {
@@ -42,45 +54,48 @@ static void nxps32k358_spi_transfer(nxps32k358SPIState *s)
 }
 
 static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr,
-                                     unsigned int size)
+                                    unsigned int size)
 {
     NXPS32K358SPIState *s = opaque;
 
     DB_PRINT("Address: 0x%" HWADDR_PRIx "\n", addr);
 
-    switch (addr) {
-    case STM_SPI_CR1:
-        return s->spi_cr1;
-    case STM_SPI_CR2:
-        qemu_log_mask(LOG_UNIMP, "%s: Interrupts and DMA are not implemented\n",
-                      __func__);
-        return s->spi_cr2;
-    case STM_SPI_SR:
-        return s->spi_sr;
-    case STM_SPI_DR:
-        nxps32k358_spi_transfer(s);
-        s->spi_sr &= ~STM_SPI_SR_RXNE;
-        return s->spi_dr;
-    case STM_SPI_CRCPR:
-        qemu_log_mask(LOG_UNIMP, "%s: CRC is not implemented, the registers " \
-                      "are included for compatibility\n", __func__);
-        return s->spi_crcpr;
-    case STM_SPI_RXCRCR:
-        qemu_log_mask(LOG_UNIMP, "%s: CRC is not implemented, the registers " \
-                      "are included for compatibility\n", __func__);
-        return s->spi_rxcrcr;
-    case STM_SPI_TXCRCR:
-        qemu_log_mask(LOG_UNIMP, "%s: CRC is not implemented, the registers " \
-                      "are included for compatibility\n", __func__);
-        return s->spi_txcrcr;
-    case STM_SPI_I2SCFGR:
-        qemu_log_mask(LOG_UNIMP, "%s: I2S is not implemented, the registers " \
-                      "are included for compatibility\n", __func__);
-        return s->spi_i2scfgr;
-    case STM_SPI_I2SPR:
-        qemu_log_mask(LOG_UNIMP, "%s: I2S is not implemented, the registers " \
-                      "are included for compatibility\n", __func__);
-        return s->spi_i2spr;
+    switch (addr)
+    {
+    case S32K_LPSPI_VERID:
+        return s->lpspi_verid;
+    case S32K_LPSPI_PARAM:
+        return s->lpspi_param;
+    case S32K_LPSPI_CR:
+        return s->lpspi_cr;
+    case S32K_LPSPI_SR:
+        return s->lpspi_sr;
+    case S32K_LPSPI_IER:
+        return s->lpspi_ier;
+    case S32K_LPSPI_DER:
+        return s->lpspi_der;
+    case S32K_LPSPI_CFGR0:
+        return s->lpspi_cfgr0;
+    case S32K_LPSPI_CFGR1:
+        return s->lpspi_cfgr1;
+    // case S32K_LPSPI_DMR0:
+    //     return s->lpspi_dmr0;
+    // case S32K_LPSPI_DMR1:
+    //     return s->lpspi_dmr1;
+    case S32K_LPSPI_CCR:
+        return s->lpspi_ccr;
+    case S32K_LPSPI_FCR:
+        return s->lpspi_fcr;
+    case S32K_LPSPI_FSR:
+        return s->lpspi_fsr;
+    case S32K_LPSPI_TCR:
+        return s->lpspi_tcr;
+    case S32K_LPSPI_TDR:
+        return s->lpspi_tdr;
+    case S32K_LPSPI_RSR:
+        return s->lpspi_rsr;
+    case S32K_LPSPI_RDR:
+        return s->lpspi_rdr;
     default:
         qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad offset 0x%" HWADDR_PRIx "\n",
                       __func__, addr);
@@ -90,20 +105,22 @@ static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr,
 }
 
 static void nxps32k358_spi_write(void *opaque, hwaddr addr,
-                                uint64_t val64, unsigned int size)
+                                 uint64_t val64, unsigned int size)
 {
     NXPS32K358SPIState *s = opaque;
     uint32_t value = val64;
 
     DB_PRINT("Address: 0x%" HWADDR_PRIx ", Value: 0x%x\n", addr, value);
 
-    switch (addr) {
+    switch (addr)
+    {
     case STM_SPI_CR1:
         s->spi_cr1 = value;
         return;
     case STM_SPI_CR2:
-        qemu_log_mask(LOG_UNIMP, "%s: " \
-                      "Interrupts and DMA are not implemented\n", __func__);
+        qemu_log_mask(LOG_UNIMP, "%s: "
+                                 "Interrupts and DMA are not implemented\n",
+                      __func__);
         s->spi_cr2 = value;
         return;
     case STM_SPI_SR:
@@ -119,20 +136,24 @@ static void nxps32k358_spi_write(void *opaque, hwaddr addr,
         qemu_log_mask(LOG_UNIMP, "%s: CRC is not implemented\n", __func__);
         return;
     case STM_SPI_RXCRCR:
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: " \
-                      "0x%" HWADDR_PRIx "\n", __func__, addr);
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: "
+                                       "0x%" HWADDR_PRIx "\n",
+                      __func__, addr);
         return;
     case STM_SPI_TXCRCR:
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: " \
-                      "0x%" HWADDR_PRIx "\n", __func__, addr);
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: "
+                                       "0x%" HWADDR_PRIx "\n",
+                      __func__, addr);
         return;
     case STM_SPI_I2SCFGR:
-        qemu_log_mask(LOG_UNIMP, "%s: " \
-                      "I2S is not implemented\n", __func__);
+        qemu_log_mask(LOG_UNIMP, "%s: "
+                                 "I2S is not implemented\n",
+                      __func__);
         return;
     case STM_SPI_I2SPR:
-        qemu_log_mask(LOG_UNIMP, "%s: " \
-                      "I2S is not implemented\n", __func__);
+        qemu_log_mask(LOG_UNIMP, "%s: "
+                                 "I2S is not implemented\n",
+                      __func__);
         return;
     default:
         qemu_log_mask(LOG_GUEST_ERROR,
@@ -150,7 +171,7 @@ static const VMStateDescription vmstate_nxps32k358_spi = {
     .name = TYPE_NXPS32K358_SPI,
     .version_id = 1,
     .minimum_version_id = 1,
-    .fields = (const VMStateField[]) {
+    .fields = (const VMStateField[]){
         VMSTATE_UINT32(spi_cr1, NXPS32K358SPIState),
         VMSTATE_UINT32(spi_cr2, NXPS32K358SPIState),
         VMSTATE_UINT32(spi_sr, NXPS32K358SPIState),
@@ -160,9 +181,7 @@ static const VMStateDescription vmstate_nxps32k358_spi = {
         VMSTATE_UINT32(spi_txcrcr, NXPS32K358SPIState),
         VMSTATE_UINT32(spi_i2scfgr, NXPS32K358SPIState),
         VMSTATE_UINT32(spi_i2spr, NXPS32K358SPIState),
-        VMSTATE_END_OF_LIST()
-    }
-};
+        VMSTATE_END_OF_LIST()}};
 
 static void nxps32k358_spi_init(Object *obj)
 {
@@ -187,11 +206,11 @@ static void nxps32k358_spi_class_init(ObjectClass *klass, const void *data)
 }
 
 static const TypeInfo nxps32k358_spi_info = {
-    .name          = TYPE_NXPS32K358_SPI,
-    .parent        = TYPE_SYS_BUS_DEVICE,
+    .name = TYPE_NXPS32K358_SPI,
+    .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(NXPS32K358SPIState),
     .instance_init = nxps32k358_spi_init,
-    .class_init    = nxps32k358_spi_class_init,
+    .class_init = nxps32k358_spi_class_init,
 };
 
 static void nxps32k358_spi_register_types(void)
