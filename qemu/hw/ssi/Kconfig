@@ -1,3 +1,4 @@
+??? from here until ???END lines may have been inserted/deleted
 config PL022
     bool
     select SSI
@@ -18,6 +19,9 @@ config XILINX_SPIPS
     select SSI
 
 config STM32F2XX_SPI
+    bool
+    select SSI
+config NXPS32K358_SPI
     bool
     select SSI
 

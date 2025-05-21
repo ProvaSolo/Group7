@@ -675,3 +675,15 @@ config ARMSSE
     select UNIMP
     select SSE_COUNTER
     select SSE_TIMER
+
+config NXPS32K358_SOC
+    bool
+    select ARM_V7M # Seleziona il supporto per l'architettura ARMv7-M
+    select NXPS32K358_LPUART
+    select NX_S32K358_LPSPI
+
+config NXPS32K358EVB
+    bool
+    default y
+    depends on TCG && ARM
+    select NXPS32K358_SOC
