@@ -25,7 +25,7 @@ static void nxps32k358_spi_reset(DeviceState *dev)
 {
     NXPS32K358SPIState *s = nxps32k358_SPI(dev);
 
-    s->lpspi_verid = 0x02000004; // Version ID, solitamente fisso, puoi impostare il valore reale se vuoi
+    s->lpspi_verid = 0x02000004; // Version ID
     s->lpspi_param = 0x00080202; // Parameter Register, idem
     s->lpspi_cr = 0x00000000;
     s->lpspi_sr = 0x00000001; // Di solito TDF=1 dopo reset, controlla RM
@@ -53,8 +53,7 @@ static void nxps32k358_spi_transfer(nxps32k358SPIState *s)
     DB_PRINT("Data received: 0x%x\n", s->spi_dr);
 }
 
-static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr,
-                                    unsigned int size)
+static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr, unsigned int size)
 {
     NXPS32K358SPIState *s = opaque;
 
@@ -97,15 +96,13 @@ static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr,
     case S32K_LPSPI_RDR:
         return s->lpspi_rdr;
     default:
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad offset 0x%" HWADDR_PRIx "\n",
-                      __func__, addr);
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad offset 0x%" HWADDR_PRIx "\n", __func__, addr);
     }
 
     return 0;
 }
 
-static void nxps32k358_spi_write(void *opaque, hwaddr addr,
-                                 uint64_t val64, unsigned int size)
+static void nxps32k358_spi_write(void *opaque, hwaddr addr, uint64_t val64, unsigned int size)
 {
     NXPS32K358SPIState *s = opaque;
     uint32_t value = val64;
@@ -114,46 +111,57 @@ static void nxps32k358_spi_write(void *opaque, hwaddr addr,
 
     switch (addr)
     {
-    case STM_SPI_CR1:
-        s->spi_cr1 = value;
+    case S32K_LPSPI_VERID:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
         return;
-    case STM_SPI_CR2:
-        qemu_log_mask(LOG_UNIMP, "%s: "
-                                 "Interrupts and DMA are not implemented\n",
-                      __func__);
-        s->spi_cr2 = value;
+    case S32K_LPSPI_PARAM:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
         return;
-    case STM_SPI_SR:
-        /* Read only register, except for clearing the CRCERR bit, which
-         * is not supported
-         */
+    case S32K_LPSPI_CR:
+        s->lpspi_cr = value;
         return;
-    case STM_SPI_DR:
-        s->spi_dr = value;
-        nxps32k358_spi_transfer(s);
+    case S32K_LPSPI_SR:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
         return;
-    case STM_SPI_CRCPR:
-        qemu_log_mask(LOG_UNIMP, "%s: CRC is not implemented\n", __func__);
+    case S32K_LPSPI_IER:
+        s->lpspi_ier = value;
         return;
-    case STM_SPI_RXCRCR:
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: "
-                                       "0x%" HWADDR_PRIx "\n",
-                      __func__, addr);
+    case S32K_LPSPI_DER:
+        s->lpspi_der = value;
         return;
-    case STM_SPI_TXCRCR:
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: "
-                                       "0x%" HWADDR_PRIx "\n",
-                      __func__, addr);
+    case S32K_LPSPI_CFGR0:
+        s->lpspi_cfgr0 = value;
         return;
-    case STM_SPI_I2SCFGR:
-        qemu_log_mask(LOG_UNIMP, "%s: "
-                                 "I2S is not implemented\n",
-                      __func__);
+    case S32K_LPSPI_CFGR1:
+        s->lpspi_cfgr1 = value;
         return;
-    case STM_SPI_I2SPR:
-        qemu_log_mask(LOG_UNIMP, "%s: "
-                                 "I2S is not implemented\n",
-                      __func__);
+    // case S32K_LPSPI_DMR0:
+    //     s->lpspi_dmr0 = value;
+    //     return;
+    // case S32K_LPSPI_DMR1:
+    //     s->lpspi_dmr1 = value;
+    //     return;
+    case S32K_LPSPI_CCR:
+        s->lpspi_ccr = value;
+        return;
+    case S32K_LPSPI_FCR:
+        s->lpspi_fcr = value;
+        return;
+    case S32K_LPSPI_FSR:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
+        return;
+    case S32K_LPSPI_TCR:
+        s->lpspi_tcr = value;
+        return;
+    case S32K_LPSPI_TDR:
+        s->lpspi_tdr = value;
+        // Optionally trigger transfer logic here
+        return;
+    case S32K_LPSPI_RSR:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
+        return;
+    case S32K_LPSPI_RDR:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Read only register: 0x%" HWADDR_PRIx "\n", __func__, addr);
         return;
     default:
         qemu_log_mask(LOG_GUEST_ERROR,
