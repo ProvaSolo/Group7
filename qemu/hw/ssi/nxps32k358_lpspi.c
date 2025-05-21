@@ -180,15 +180,26 @@ static const VMStateDescription vmstate_nxps32k358_spi = {
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (const VMStateField[]){
-        VMSTATE_UINT32(spi_cr1, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_cr2, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_sr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_dr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_crcpr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_rxcrcr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_txcrcr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_i2scfgr, NXPS32K358SPIState),
-        VMSTATE_UINT32(spi_i2spr, NXPS32K358SPIState),
+
+        // NXP S32K358 LPSPI registers
+        VMSTATE_UINT32(lpspi_verid, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_param, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_cr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_sr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_ier, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_der, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_cfgr0, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_cfgr1, NXPS32K358SPIState),
+        // VMSTATE_UINT32(lpspi_dmr0, NXPS32K358SPIState), // Uncomment if used
+        // VMSTATE_UINT32(lpspi_dmr1, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_ccr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_fcr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_fsr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_tcr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_tdr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_rsr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_rdr, NXPS32K358SPIState),
+
         VMSTATE_END_OF_LIST()}};
 
 static void nxps32k358_spi_init(Object *obj)
