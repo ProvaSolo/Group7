@@ -8,6 +8,8 @@
 #include "hw/arm/armv7m.h"
 #include "hw/clock.h"
 #include "qom/object.h"
+#include "hw/misc/nxps32k358_syscfg.h"
+
 
 #define TYPE_NXPS32K358_SOC "nxps32k358-soc"
 OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358State, NXPS32K358_SOC)

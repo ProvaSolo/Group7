@@ -259,8 +259,8 @@ static void nxps32k358_soc_initfn(Object *obj)
                                 TYPE_NXPS32K358_LPUART);
     }
 
-    for (i = 0; i < NXP_NUM_LPSPIS; i++) {
-        object_initialize_child(obj, "lpspi[*]", &s->lpspis[i], TYPE_NXPS32K358_SPI);
+    for (int i = 0; i < NXP_NUM_LPSPIS; i++) {
+        object_initialize_child(obj, "lpspi[*]", &s->lpspis[i], TYPE_NXPS32K358_LPSPI);
     }
 
 }
@@ -268,7 +268,7 @@ static void nxps32k358_soc_initfn(Object *obj)
 
 // SOC REALIZE DA CONTROLLARE
 static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
-    NXPS32K358 *s = NXPS32K358_SOC(dev_soc);
+    NXPS32K358State *s = NXPS32K358_SOC(dev_soc);
     DeviceState *dev, *armv7m;
     SysBusDevice *busdev;
     int i;
@@ -340,8 +340,8 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     // REALIZING LPUART
     // REALIZING LPSPI
     for (i = 0; i < NXP_NUM_LPSPIS; i++) {
-        dev = DEVICE(&(s->spi[i]));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspi[i]), errp)) {
+        dev = DEVICE(&(s->lpspis[i]));
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspis[i]), errp)) {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
