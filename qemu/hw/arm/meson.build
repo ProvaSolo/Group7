@@ -75,8 +75,8 @@ arm_common_ss.add(when: 'CONFIG_SX1', if_true: files('omap_sx1.c'))
 arm_common_ss.add(when: 'CONFIG_VERSATILE', if_true: files('versatilepb.c'))
 arm_common_ss.add(when: 'CONFIG_VEXPRESS', if_true: files('vexpress.c'))
 
-arm_ss.add(when: 'CONFIG_NXPS32K358SOC', if_true: files('nxps32k358_soc.c'))
-arm_ss.add(when: 'CONFIG_NXPS32K358BOARD', if_true: files('nxps32k358_board.c'))
+arm_ss.add(when: 'CONFIG_NXPS32K358_SOC', if_true: files('nxps32k358_soc.c'))
+arm_ss.add(when: 'CONFIG_NXPS32K358_EVB', if_true: files('nxps32k358discovery.c'))
 arm_common_ss.add(fdt, files('boot.c'))
 
 hw_arch += {'arm': arm_ss}
