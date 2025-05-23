@@ -1,27 +1,19 @@
-#include "qemu/osdep.h"
-#include "qemu/units.h"
-#include "qapi/error.h"
-#include "qom/object.h"
-#include "hw/boards.h"
-#include "hw/arm/arm.h" // Necessario per ARM_CPU_TYPE_NAME e altro hardware ARM
-#include "hw/loader.h"   // Per load_image_targphys o simili
-#include "sysemu/sysemu.h" // Per qemu_find_file, ecc.
-#include "exec/address-spaces.h" // Per get_system_memory()
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/module.h"
 #include "hw/arm/boot.h"
-#include "exec/address-spaces.h"
+
+#include "system/address-spaces.h"
+
 // -- Project dependant: LOCATED ON /INCLUDE/HW/ARM
 #include "hw/arm/nxps32k358_soc.h"
-#include "hw/char/nxps32k358_lpuart.h"
-#include "hw/ssi/nxps32k358_spi.h" 
+
 
 #include "hw/qdev-properties.h"
 #include "hw/qdev-clock.h"
 #include "hw/misc/unimp.h"
-#include "sysemu/sysemu.h" 
+#include "system/system.h"
 
 
 /* stm32f100_soc implementation is derived from stm32f205_soc */
@@ -263,16 +255,18 @@ static void nxps32k358_soc_initfn(Object *obj)
 
     // NXP_NUM_LPUARTS AND NXP_NUM_SPIS ARE DEFINED IN .H
     for (int i = 0; i < NXP_NUM_LPUARTS; i++) {
-        object_initialize_child(obj, "lpuart[*]", &s->lpuart[i],
+        object_initialize_child(obj, "lpuart[*]", &s->lpuarts[i],
                                 TYPE_NXPS32K358_LPUART);
     }
 
-    for (i = 0; i < NXP_NUM_SPIS; i++) {
-        object_initialize_child(obj, "spi[*]", &s->spi[i], TYPE_NXPS32K358_SPI);
+    for (i = 0; i < NXP_NUM_LPSPIS; i++) {
+        object_initialize_child(obj, "lpspi[*]", &s->lpspis[i], TYPE_NXPS32K358_SPI);
     }
 
 }
 
+
+// SOC REALIZE DA CONTROLLARE
 static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     NXPS32K358 *s = NXPS32K358_SOC(dev_soc);
     DeviceState *dev, *armv7m;
@@ -343,11 +337,11 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     busdev = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(busdev, 0, 0x40013800);
 
-
-    // REALIZING SPI
-    for (i = 0; i < NXP_NUM_SPIS; i++) {
+    // REALIZING LPUART
+    // REALIZING LPSPI
+    for (i = 0; i < NXP_NUM_LPSPIS; i++) {
         dev = DEVICE(&(s->spi[i]));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->spi[i]), errp)) {
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspi[i]), errp)) {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);

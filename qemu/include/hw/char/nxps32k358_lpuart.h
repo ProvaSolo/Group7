@@ -33,10 +33,10 @@
 #define LPUART_CTRL_RIE  (1 << 21) // Receive Interrupt Enable
 
 #define TYPE_NXPS32K358_LPUART "nxps32k358-lpuart"
-OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LpuartState, NXPS32K358_LPUART)
+OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPUARTState, NXPS32K358_LPUART)
 
 
-struct NXPS32K358LpuartState {
+struct NXPS32K358LPUARTState {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
