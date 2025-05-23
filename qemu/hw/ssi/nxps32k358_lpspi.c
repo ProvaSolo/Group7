@@ -176,7 +176,7 @@ static const MemoryRegionOps nxps32k358_spi_ops = {
 };
 
 static const VMStateDescription vmstate_nxps32k358_spi = {
-    .name = TYPE_NXPS32K358_SPI,
+    .name = TYPE_NXPS32K358_LPSPI,
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (const VMStateField[]){
@@ -208,7 +208,7 @@ static void nxps32k358_spi_init(Object *obj)
     DeviceState *dev = DEVICE(obj);
 
     memory_region_init_io(&s->mmio, obj, &nxps32k358_spi_ops, s,
-                          TYPE_NXPS32K358_SPI, 0x400);
+                          TYPE_NXPS32K358_LPSPI, 0x400);
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->mmio);
 
     sysbus_init_irq(SYS_BUS_DEVICE(obj), &s->irq);
@@ -225,7 +225,7 @@ static void nxps32k358_spi_class_init(ObjectClass *klass, const void *data)
 }
 
 static const TypeInfo nxps32k358_spi_info = {
-    .name = TYPE_NXPS32K358_SPI,
+    .name = TYPE_NXPS32K358_LPSPI,
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(NXPS32K358SPIState),
     .instance_init = nxps32k358_spi_init,
