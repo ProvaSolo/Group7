@@ -43,14 +43,31 @@ static void nxps32k358_spi_reset(DeviceState *dev)
     s->lpspi_rsr = 0x00000002; // RDF=1 tipico reset
     s->lpspi_rdr = 0x00000000;
 }
-static void nxps32k358_spi_transfer(nxps32k358SPIState *s)
+static void nxps32k358_spi_transfer(NXPS32K358SPIState *s)
 {
-    DB_PRINT("Data to send: 0x%x\n", s->spi_dr);
+    DB_PRINT("Data to send: 0x%x\n", s->lpspi_tdr);
 
-    s->spi_dr = ssi_transfer(s->ssi, s->spi_dr);
-    s->spi_sr |= STM_SPI_SR_RXNE;
+    // Perform the transfer
+    s->lpspi_rdr = ssi_transfer(s->ssi, s->lpspi_tdr);
 
-    DB_PRINT("Data received: 0x%x\n", s->spi_dr);
+    // Update status registers
+    s->lpspi_sr |= (1 << 1); // Set RDF (Receive Data Flag)
+    s->lpspi_sr |= (1 << 0); // Set TDF (Transmit Data Flag)
+
+    // Update FIFO status if needed
+    /*
+    s->lpspi_fsr &= ~(0xF << 16); // Clear RXCOUNT
+    s->lpspi_fsr |= (1 << 16);    // Set RXCOUNT to 1
+    s->lpspi_fsr |= (1 << 0);     // Set RFDF (Receive FIFO Drain Flag)
+    */
+    // If interrupts are enabled, trigger them
+    /*
+    if (s->lpspi_ier & (1 << 1))
+    { // If RDF interrupt enabled
+        qemu_irq_raise(s->irq);
+    }
+    */
+    DB_PRINT("Data received: 0x%x\n", s->lpspi_rdr);
 }
 
 static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr, unsigned int size)
