@@ -19,12 +19,11 @@
 /* stm32f100_soc implementation is derived from stm32f205_soc */
 
 // // The variables represent addresses on our nxp_s32k and need to be changed(is also present the number of pins that we have for usart and spi)
-// static const uint32_t usart_addr[STM_NUM_USARTS] = { 0x40013800, 0x40004400,
-//     0x40004800 };
-// static const uint32_t spi_addr[STM_NUM_SPIS] = { 0x40013000, 0x40003800 };
+static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = { 0x40328000,0x4032C000, 0x40330000, 0x40334000, 0x40338000, 0x4033C000, 0x40340000, 0x40344000 };
+static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = { 0x40358000, 0x4035C000, 0x40360000, 0x40364000};
 
-// static const int usart_irq[STM_NUM_USARTS] = {37, 38, 39};
-// static const int spi_irq[STM_NUM_SPIS] = {35, 36};
+static const int lpuart_irq[NXP_NUM_LPUARTS] = {44,45,46,47,48,49,50};
+static const int lpspi_irq[NXP_NUM_LPSPIS] = {58,59,60,61};
 
 // -------------------------------------
 
@@ -268,6 +267,9 @@ static void nxps32k358_soc_initfn(Object *obj)
 
 // SOC REALIZE DA CONTROLLARE
 static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
+    
+    create_unimplemented_devices();
+
     NXPS32K358State *s = NXPS32K358_SOC(dev_soc);
     DeviceState *dev, *armv7m;
     SysBusDevice *busdev;
@@ -337,7 +339,17 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     busdev = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(busdev, 0, 0x40013800);
 
-    // REALIZING LPUART
+    // REALIZING LPUART registers and controllers
+    for (i = 0; i < NXP_NUM_LPUARTS; i++) {
+        dev = DEVICE(&(s->lpuarts[i]));
+        qdev_prop_set_chr(dev, "chardev", serial_hd(i));
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpuarts[i]), errp)) {
+            return;
+        }
+        busdev = SYS_BUS_DEVICE(dev);
+        sysbus_mmio_map(busdev, 0, lpuart_addr[i]);
+        sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, lpuart_irq[i]));
+    }
     // REALIZING LPSPI
     for (i = 0; i < NXP_NUM_LPSPIS; i++) {
         dev = DEVICE(&(s->lpspis[i]));
@@ -345,8 +357,8 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
-        sysbus_mmio_map(busdev, 0, spi_addr[i]);
-        sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, spi_irq[i]));
+        sysbus_mmio_map(busdev, 0, lpspi_addr[i]);
+        sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, lpspi_irq[i]));
     }
 }
 
