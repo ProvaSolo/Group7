@@ -52,7 +52,7 @@
  
      armv7m_load_kernel(NXPS32K358_SOC(dev)->armv7m.cpu,
                         machine->kernel_filename,
-                        CODE_FLASH_BASE_ADDRESS, CODE_FLASH_BLOCK_SIZE * 4); // da capire come lui le ha ridefinite
+                        FLASH_BASE_ADDRESS, FLASH_SIZE); 
  }
  
  static void nxp_s32k358discovery_machine_init(MachineClass *mc)

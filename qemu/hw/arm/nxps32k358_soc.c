@@ -303,6 +303,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     // FLASH SIZE DEFINED IN .H
 
     // Set up the memory region for our board
+    // ----------------ROM------------
     memory_region_init_rom(&s->flash, OBJECT(dev_soc), "NXPS32K358.flash",
                            FLASH_SIZE, &error_fatal);
     memory_region_init_alias(&s->flash_alias, OBJECT(dev_soc),
@@ -310,11 +311,13 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
 
     memory_region_add_subregion(system_memory, FLASH_BASE_ADDRESS, &s->flash);
     memory_region_add_subregion(system_memory, 0, &s->flash_alias);
+    // --------------------------------
 
+    //------------ RAM ----------------
     memory_region_init_ram(&s->sram, NULL, "NXPS32K358.sram", SRAM_SIZE,
                            &error_fatal);
     memory_region_add_subregion(system_memory, SRAM_BASE_ADDRESS, &s->sram);
-
+    // ----------------------------------
  
     // Set up the CPU -> CONNECTING TO PINS
     armv7m = DEVICE(&s->armv7m);
