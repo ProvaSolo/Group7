@@ -4,15 +4,15 @@
 #include "hw/ssi/nxps32k358_lpspi.h"
 #include "migration/vmstate.h"
 
-#ifndef NXP_SPI_ERR_DEBUG
-#define NXP_SPI_ERR_DEBUG 0
+#ifndef NXP_LPSPI_ERR_DEBUG
+#define NXP_LPSPI_ERR_DEBUG 0
 #endif
 
 // REVISONE 1 -- 20 MAY
 #define DB_PRINT_L(lvl, fmt, args...)               \
     do                                              \
     {                                               \
-        if (NXP_SPI_ERR_DEBUG >= lvl)               \
+        if (NXP_LPSPI_ERR_DEBUG >= lvl)             \
         {                                           \
             qemu_log("%s: " fmt, __func__, ##args); \
         }                                           \
@@ -21,9 +21,9 @@
 #define DB_PRINT(fmt, args...) DB_PRINT_L(1, fmt, ##args)
 
 // Modificare i reset, per reference a pagina 2862 del Reference Manual
-static void nxps32k358_spi_reset(DeviceState *dev)
+static void nxps32k358_lpspi_reset(DeviceState *dev)
 {
-    NXPS32K358SPIState *s = nxps32k358_SPI(dev);
+    NXPS32K358LPSPIState *s = nxps32k358_LPSPI(dev);
 
     s->lpspi_verid = 0x02000004; // Version ID
     s->lpspi_param = 0x00080202; // Parameter Register, idem
@@ -43,7 +43,7 @@ static void nxps32k358_spi_reset(DeviceState *dev)
     s->lpspi_rsr = 0x00000002; // RDF=1 tipico reset
     s->lpspi_rdr = 0x00000000;
 }
-static void nxps32k358_spi_transfer(NXPS32K358SPIState *s)
+static void nxps32k358_lpspi_transfer(NXPS32K358LPSPIState *s)
 {
     DB_PRINT("Data to send: 0x%x\n", s->lpspi_tdr);
 
@@ -70,9 +70,9 @@ static void nxps32k358_spi_transfer(NXPS32K358SPIState *s)
     DB_PRINT("Data received: 0x%x\n", s->lpspi_rdr);
 }
 
-static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr, unsigned int size)
+static uint64_t nxps32k358_lpspi_read(void *opaque, hwaddr addr, unsigned int size)
 {
-    NXPS32K358SPIState *s = opaque;
+    NXPS32K358LPSPIState *s = opaque;
 
     DB_PRINT("Address: 0x%" HWADDR_PRIx "\n", addr);
 
@@ -119,9 +119,9 @@ static uint64_t nxps32k358_spi_read(void *opaque, hwaddr addr, unsigned int size
     return 0;
 }
 
-static void nxps32k358_spi_write(void *opaque, hwaddr addr, uint64_t val64, unsigned int size)
+static void nxps32k358_lpspi_write(void *opaque, hwaddr addr, uint64_t val64, unsigned int size)
 {
-    NXPS32K358SPIState *s = opaque;
+    NXPS32K358LPSPIState *s = opaque;
     uint32_t value = val64;
 
     DB_PRINT("Address: 0x%" HWADDR_PRIx ", Value: 0x%x\n", addr, value);
@@ -186,45 +186,45 @@ static void nxps32k358_spi_write(void *opaque, hwaddr addr, uint64_t val64, unsi
     }
 }
 
-static const MemoryRegionOps nxps32k358_spi_ops = {
-    .read = nxps32k358_spi_read,
-    .write = nxps32k358_spi_write,
+static const MemoryRegionOps nxps32k358_lpspi_ops = {
+    .read = nxps32k358_lpspi_read,
+    .write = nxps32k358_lpspi_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static const VMStateDescription vmstate_nxps32k358_spi = {
+static const VMStateDescription vmstate_nxps32k358_lpspi = {
     .name = TYPE_NXPS32K358_LPSPI,
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (const VMStateField[]){
 
         // NXP S32K358 LPSPI registers
-        VMSTATE_UINT32(lpspi_verid, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_param, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_cr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_sr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_ier, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_der, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_cfgr0, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_cfgr1, NXPS32K358SPIState),
-        // VMSTATE_UINT32(lpspi_dmr0, NXPS32K358SPIState), // Uncomment if used
-        // VMSTATE_UINT32(lpspi_dmr1, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_ccr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_fcr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_fsr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_tcr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_tdr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_rsr, NXPS32K358SPIState),
-        VMSTATE_UINT32(lpspi_rdr, NXPS32K358SPIState),
+        VMSTATE_UINT32(lpspi_verid, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_param, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_cr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_sr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_ier, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_der, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_cfgr0, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_cfgr1, NXPS32K358LPSPIState),
+        // VMSTATE_UINT32(lpspi_dmr0, NXPS32K358LPSPIState), // Uncomment if used
+        // VMSTATE_UINT32(lpspi_dmr1, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_ccr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_fcr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_fsr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_tcr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_tdr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_rsr, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(lpspi_rdr, NXPS32K358LPSPIState),
 
         VMSTATE_END_OF_LIST()}};
 
-static void nxps32k358_spi_init(Object *obj)
+static void nxps32k358_lpspi_init(Object *obj)
 {
-    NXPS32K358SPIState *s = nxps32k358_SPI(obj);
+    NXPS32K358LPSPIState *s = nxps32k358_LPSPI(obj);
     DeviceState *dev = DEVICE(obj);
 
-    memory_region_init_io(&s->mmio, obj, &nxps32k358_spi_ops, s,
+    memory_region_init_io(&s->mmio, obj, &nxps32k358_lpspi_ops, s,
                           TYPE_NXPS32K358_LPSPI, 0x400);
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->mmio);
 
@@ -233,25 +233,25 @@ static void nxps32k358_spi_init(Object *obj)
     s->ssi = ssi_create_bus(dev, "ssi");
 }
 
-static void nxps32k358_spi_class_init(ObjectClass *klass, const void *data)
+static void nxps32k358_lpspi_class_init(ObjectClass *klass, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    device_class_set_legacy_reset(dc, nxps32k358_spi_reset);
-    dc->vmsd = &vmstate_nxps32k358_spi;
+    device_class_set_legacy_reset(dc, nxps32k358_lpspi_reset);
+    dc->vmsd = &vmstate_nxps32k358_lpspi;
 }
 
-static const TypeInfo nxps32k358_spi_info = {
+static const TypeInfo nxps32k358_lpspi_info = {
     .name = TYPE_NXPS32K358_LPSPI,
     .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(NXPS32K358SPIState),
-    .instance_init = nxps32k358_spi_init,
-    .class_init = nxps32k358_spi_class_init,
+    .instance_size = sizeof(NXPS32K358LPSPIState),
+    .instance_init = nxps32k358_lpspi_init,
+    .class_init = nxps32k358_lpspi_class_init,
 };
 
-static void nxps32k358_spi_register_types(void)
+static void nxps32k358_lpspi_register_types(void)
 {
-    type_register_static(&nxps32k358_spi_info);
+    type_register_static(&nxps32k358_lpspi_info);
 }
 
-type_init(nxps32k358_spi_register_types)
+type_init(nxps32k358_lpspi_register_types)
