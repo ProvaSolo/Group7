@@ -9,9 +9,9 @@
 #include "qom/object.h"
 
 #define TYPE_NXPS32K358_SYSCFG "nxps32k358-syscfg"
-OBJECT_DECLARE_SIMPLE_TYPE(Nxps32k358SyscfgState, NXPS32K358_SYSCFG)
+OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358SYSCFGState, NXPS32K358_SYSCFG)
 
-struct Nxps32k358SyscfgState
+struct NXPS32K358SYSCFGState
 {
     SysBusDevice parent_obj;
 

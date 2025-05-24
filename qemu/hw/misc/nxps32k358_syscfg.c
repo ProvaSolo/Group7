@@ -15,7 +15,7 @@
 
 #define TYPE_NXPS32K358_SYSCFG "nxps32k358-syscfg"
 #define NXPS32K358_SYSCFG(obj) \
-	OBJECT_CHECK(Nxps32k358SyscfgState, (obj), TYPE_NXPS32K358_SYSCFG)
+	OBJECT_CHECK(NXPS32K358SYSCFGState, (obj), TYPE_NXPS32K358_SYSCFG)
 
 /* Base address and register offsets for S32K358 need to be verified from official documentation */
 #define SYSCFG_BASE_ADDR 0x40268000 /* From memory map in Reference Manual */
@@ -32,7 +32,7 @@
 #define ACTIVABLE_BITS_CFGR1 0x0000FFFFu /* Placeholder - needs verification */
 #define ACTIVABLE_BITS_SKR 0x000000FFu	 /* Placeholder - needs verification */
 
-typedef struct Nxps32k358SyscfgState
+typedef struct NXPS32K358SYSCFGState
 {
 	SysBusDevice parent_obj;
 	MemoryRegion mmio;
@@ -44,11 +44,11 @@ typedef struct Nxps32k358SyscfgState
 	uint32_t skr;
 
 	Clock *clk;
-} Nxps32k358SyscfgState;
+} NXPS32K358SYSCFGState;
 
 static void nxps32k358_syscfg_hold_reset(Object *obj, ResetType type)
 {
-	Nxps32k358SyscfgState *s = NXPS32K358_SYSCFG(obj);
+	NXPS32K358SYSCFGState *s = NXPS32K358_SYSCFG(obj);
 
 	s->memrmp = 0x00000000;
 	s->cfgr1 = 0x7C000001;
@@ -60,7 +60,7 @@ static void nxps32k358_syscfg_hold_reset(Object *obj, ResetType type)
 static uint64_t nxps32k358_syscfg_read(void *opaque, hwaddr addr,
 									   unsigned int size)
 {
-	Nxps32k358SyscfgState *s = opaque;
+	NXPS32K358SYSCFGState *s = opaque;
 
 	switch (addr)
 	{
@@ -84,7 +84,7 @@ static uint64_t nxps32k358_syscfg_read(void *opaque, hwaddr addr,
 static void nxps32k358_syscfg_write(void *opaque, hwaddr addr,
 									uint64_t value, unsigned int size)
 {
-	Nxps32k358SyscfgState *s = opaque;
+	NXPS32K358SYSCFGState *s = opaque;
 
 	switch (addr)
 	{
@@ -129,7 +129,7 @@ static const MemoryRegionOps nxps32k358_syscfg_ops = {
 
 static void nxps32k358_syscfg_init(Object *obj)
 {
-	Nxps32k358SyscfgState *s = NXPS32K358_SYSCFG(obj);
+	NXPS32K358SYSCFGState *s = NXPS32K358_SYSCFG(obj);
 
 	memory_region_init_io(&s->mmio, obj, &nxps32k358_syscfg_ops, s,
 						  TYPE_NXPS32K358_SYSCFG, 0x400);
@@ -139,7 +139,7 @@ static void nxps32k358_syscfg_init(Object *obj)
 
 static void nxps32k358_syscfg_realize(DeviceState *dev, Error **errp)
 {
-	Nxps32k358SyscfgState *s = NXPS32K358_SYSCFG(dev);
+	NXPS32K358SYSCFGState *s = NXPS32K358_SYSCFG(dev);
 	if (!clock_has_source(s->clk))
 	{
 		error_setg(errp, "SYSCFG: clk input must be connected");
@@ -152,12 +152,12 @@ static const VMStateDescription vmstate_nxps32k358_syscfg = {
 	.version_id = 1,
 	.minimum_version_id = 1,
 	.fields = (VMStateField[]){
-		VMSTATE_UINT32(memrmp, Nxps32k358SyscfgState),
-		VMSTATE_UINT32(cfgr1, Nxps32k358SyscfgState),
-		VMSTATE_UINT32(scsr, Nxps32k358SyscfgState),
-		VMSTATE_UINT32(cfgr2, Nxps32k358SyscfgState),
-		VMSTATE_UINT32(skr, Nxps32k358SyscfgState),
-		VMSTATE_CLOCK(clk, Nxps32k358SyscfgState),
+		VMSTATE_UINT32(memrmp, NXPS32K358SYSCFGState),
+		VMSTATE_UINT32(cfgr1, NXPS32K358SYSCFGState),
+		VMSTATE_UINT32(scsr, NXPS32K358SYSCFGState),
+		VMSTATE_UINT32(cfgr2, NXPS32K358SYSCFGState),
+		VMSTATE_UINT32(skr, NXPS32K358SYSCFGState),
+		VMSTATE_CLOCK(clk, NXPS32K358SYSCFGState),
 		VMSTATE_END_OF_LIST()}};
 
 static void nxps32k358_syscfg_class_init(ObjectClass *klass, void *data)
@@ -173,7 +173,7 @@ static void nxps32k358_syscfg_class_init(ObjectClass *klass, void *data)
 static const TypeInfo nxps32k358_syscfg_info = {
 	.name = TYPE_NXPS32K358_SYSCFG,
 	.parent = TYPE_SYS_BUS_DEVICE,
-	.instance_size = sizeof(Nxps32k358SyscfgState),
+	.instance_size = sizeof(NXPS32K358SYSCFGState),
 	.instance_init = nxps32k358_syscfg_init,
 	.class_init = nxps32k358_syscfg_class_init,
 };
