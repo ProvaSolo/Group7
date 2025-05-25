@@ -23,7 +23,7 @@
 // Modificare i reset, per reference a pagina 2862 del Reference Manual
 static void nxps32k358_lpspi_reset(DeviceState *dev)
 {
-    NXPS32K358LPSPIState *s = nxps32k358_LPSPI(dev);
+    NXPS32K358LPSPIState *s = NXPS32K358_LPSPI(dev);
 
     s->lpspi_verid = 0x02000004; // Version ID
     s->lpspi_param = 0x00080202; // Parameter Register, idem
@@ -221,7 +221,7 @@ static const VMStateDescription vmstate_nxps32k358_lpspi = {
 
 static void nxps32k358_lpspi_init(Object *obj)
 {
-    NXPS32K358LPSPIState *s = nxps32k358_LPSPI(obj);
+    NXPS32K358LPSPIState *s = NXPS32K358_LPSPI(obj);
     DeviceState *dev = DEVICE(obj);
 
     memory_region_init_io(&s->mmio, obj, &nxps32k358_lpspi_ops, s,

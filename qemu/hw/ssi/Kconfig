@@ -20,6 +20,7 @@ config XILINX_SPIPS
 config STM32F2XX_SPI
     bool
     select SSI
+    
 config NXPS32K358_LPSPI
     bool
     select SSI

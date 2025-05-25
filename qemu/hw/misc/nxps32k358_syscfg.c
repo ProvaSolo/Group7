@@ -5,6 +5,10 @@
  */
 
 #include "qemu/osdep.h"
+#include "hw/sysbus.h"
+#include "system/memory.h"
+#include "hw/qdev-core.h"
+#include "hw/resettable.h"
 #include "qemu/log.h"
 #include "trace.h"
 #include "hw/irq.h"
@@ -160,7 +164,7 @@ static const VMStateDescription vmstate_nxps32k358_syscfg = {
 		VMSTATE_CLOCK(clk, NXPS32K358SYSCFGState),
 		VMSTATE_END_OF_LIST()}};
 
-static void nxps32k358_syscfg_class_init(ObjectClass *klass, void *data)
+static void nxps32k358_syscfg_class_init(ObjectClass *klass, const void *data)
 {
 	DeviceClass *dc = DEVICE_CLASS(klass);
 	ResettableClass *rc = RESETTABLE_CLASS(klass);

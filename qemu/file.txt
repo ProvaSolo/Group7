@@ -1,0 +1,4 @@
+changing dir to build for make ""...
+make[1]: Entering directory '/home/iaco/Polito/CAOS/Group7/qemu/build'
+[1/18] Generating qemu-version.h with a custom command (wrapped by meson to capture output)
+make[1]: Leaving directory '/home/iaco/Polito/CAOS/Group7/qemu/build'

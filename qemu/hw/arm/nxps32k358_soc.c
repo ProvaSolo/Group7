@@ -9,31 +9,29 @@
 // -- Project dependant: LOCATED ON /INCLUDE/HW/ARM
 #include "hw/arm/nxps32k358_soc.h"
 
-
 #include "hw/qdev-properties.h"
 #include "hw/qdev-clock.h"
 #include "hw/misc/unimp.h"
 #include "system/system.h"
 
-
 /* stm32f100_soc implementation is derived from stm32f205_soc */
 
 // // The variables represent addresses on our nxp_s32k and need to be changed(is also present the number of pins that we have for usart and spi)
-static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = { 0x40328000,0x4032C000, 0x40330000, 0x40334000, 0x40338000, 0x4033C000, 0x40340000, 0x40344000 };
-static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = { 0x40358000, 0x4035C000, 0x40360000, 0x40364000};
+static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = {0x40328000, 0x4032C000, 0x40330000, 0x40334000, 0x40338000, 0x4033C000, 0x40340000, 0x40344000};
+static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = {0x40358000, 0x4035C000, 0x40360000, 0x40364000};
 
-static const int lpuart_irq[NXP_NUM_LPUARTS] = {44,45,46,47,48,49,50};
-static const int lpspi_irq[NXP_NUM_LPSPIS] = {58,59,60,61};
+static const int lpuart_irq[NXP_NUM_LPUARTS] = {44, 45, 46, 47, 48, 49, 50};
+static const int lpspi_irq[NXP_NUM_LPSPIS] = {58, 59, 60, 61};
 
 // -------------------------------------
-
 
 /* We don't care if we actually implement the devices later on
  * since unimplemented devices have the lowest priority in QEMU
  * We setup all the devices as unimplemented and after we can implement only the needed devices
  */
 
-static void create_unimplemented_devices(void) {
+static void create_unimplemented_devices(void)
+{
 
     create_unimplemented_device("hse_xbic", 0x40008000, 0x4000);
     create_unimplemented_device("erm1", 0x4000C000, 0x4000);
@@ -150,7 +148,7 @@ static void create_unimplemented_devices(void) {
     create_unimplemented_device("lpcmp_1", 0x40374000, 0x4000);
     create_unimplemented_device("tmu", 0x4037C000, 0x4000);
     create_unimplemented_device("crc", 0x40380000, 0x4000);
-    create_unimplemented_device("fccu_", 0x40384000, 0x4000); // Nota: il nome finisce con underscore nel CSV
+    create_unimplemented_device("fccu_", 0x40384000, 0x4000);    // Nota: il nome finisce con underscore nel CSV
     create_unimplemented_device("mu_0_mub", 0x4038C000, 0x4000); // MU_0 esiste solo come MUB
     create_unimplemented_device("mu_1_mub", 0x40390000, 0x4000); // MU_1 esiste solo come MUB
     create_unimplemented_device("jdc", 0x40394000, 0x4000);
@@ -158,9 +156,9 @@ static void create_unimplemented_devices(void) {
     create_unimplemented_device("stcu", 0x403A0000, 0x4000);
     create_unimplemented_device("selftest_gpr", 0x403B0000, 0x4000);
     create_unimplemented_device("aes_accel", 0x403C0000, 0x10000); // Dimensione 64KB
-    create_unimplemented_device("aes_app0", 0x403D0000, 0x10000); // Dimensione 64KB
-    create_unimplemented_device("aes_app1", 0x403E0000, 0x10000); // Dimensione 64KB
-    create_unimplemented_device("aes_app2", 0x403F0000, 0x10000); // Dimensione 64KB
+    create_unimplemented_device("aes_app0", 0x403D0000, 0x10000);  // Dimensione 64KB
+    create_unimplemented_device("aes_app1", 0x403E0000, 0x10000);  // Dimensione 64KB
+    create_unimplemented_device("aes_app2", 0x403F0000, 0x10000);  // Dimensione 64KB
     create_unimplemented_device("tcm_xbic", 0x40400000, 0x4000);
     create_unimplemented_device("edma_xbic", 0x40404000, 0x4000);
     create_unimplemented_device("pram2_tcm_xbic", 0x40408000, 0x4000);
@@ -227,9 +225,7 @@ static void create_unimplemented_devices(void) {
     create_unimplemented_device("fmu1", 0x40580000, 0x4000);
     create_unimplemented_device("fmu1_alt", 0x40584000, 0x4000);
     create_unimplemented_device("pram_3", 0x40588000, 0x4000);
-
-} 
-
+}
 
 // Definition of the soc class init
 // in this function we will initialize the peripherals that i need to emulare
@@ -241,6 +237,7 @@ static void nxps32k358_soc_initfn(Object *obj)
     NXPS32K358State *s = NXPS32K358_SOC(obj);
 
     object_initialize_child(obj, "armv7m", &s->armv7m, TYPE_ARMV7M);
+    object_initialize_child(obj, "syscfg", &s->syscfg, TYPE_NXPS32K358_SYSCFG);
 
     s->sysclk = qdev_init_clock_in(DEVICE(s), "sysclk", NULL, NULL, 0);
     s->refclk = qdev_init_clock_in(DEVICE(s), "refclk", NULL, NULL, 0);
@@ -251,23 +248,23 @@ static void nxps32k358_soc_initfn(Object *obj)
     s->aips_slow_clk =
         qdev_init_clock_in(DEVICE(s), "aips_slow_clk", NULL, NULL, 0);
 
-
     // NXP_NUM_LPUARTS AND NXP_NUM_SPIS ARE DEFINED IN .H
-    for (int i = 0; i < NXP_NUM_LPUARTS; i++) {
+    for (int i = 0; i < NXP_NUM_LPUARTS; i++)
+    {
         object_initialize_child(obj, "lpuart[*]", &s->lpuarts[i],
                                 TYPE_NXPS32K358_LPUART);
     }
 
-    for (int i = 0; i < NXP_NUM_LPSPIS; i++) {
+    for (int i = 0; i < NXP_NUM_LPSPIS; i++)
+    {
         object_initialize_child(obj, "lpspi[*]", &s->lpspis[i], TYPE_NXPS32K358_LPSPI);
     }
-
 }
 
-
 // SOC REALIZE DA CONTROLLARE
-static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
-    
+static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
+{
+
     create_unimplemented_devices();
 
     NXPS32K358State *s = NXPS32K358_SOC(dev_soc);
@@ -282,16 +279,17 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
      * so it is correctly parented and not leaked on an init/deinit; it is not
      * intended as an externally exposed clock.
      */
-    if (clock_has_source(s->refclk)) {
+    if (clock_has_source(s->refclk))
+    {
         error_setg(errp, "refclk clock must not be wired up by the board code");
         return;
     }
 
-    if (!clock_has_source(s->sysclk)) {
+    if (!clock_has_source(s->sysclk))
+    {
         error_setg(errp, "sysclk clock must be wired up by the board code");
         return;
     }
-
 
     // set up the source and the frequency of the source
     /* The refclk always runs at frequency HCLK / 8 */
@@ -318,7 +316,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
                            &error_fatal);
     memory_region_add_subregion(system_memory, SRAM_BASE_ADDRESS, &s->sram);
     // ----------------------------------
- 
+
     // Set up the CPU -> CONNECTING TO PINS
     armv7m = DEVICE(&s->armv7m);
     qdev_prop_set_uint32(armv7m, "num-irq", 96);
@@ -329,24 +327,29 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
     qdev_connect_clock_in(armv7m, "refclk", s->refclk);
     object_property_set_link(OBJECT(&s->armv7m), "memory",
                              OBJECT(get_system_memory()), &error_abort);
-    if (!sysbus_realize(SYS_BUS_DEVICE(&s->armv7m), errp)) {
+    if (!sysbus_realize(SYS_BUS_DEVICE(&s->armv7m), errp))
+    {
         return;
     }
 
     // Set up the BUS
-     /* System configuration controller */
+    /* System configuration controller */
     dev = DEVICE(&s->syscfg);
-    if (!sysbus_realize(SYS_BUS_DEVICE(&s->syscfg), errp)) {
+    qdev_connect_clock_in(dev, "clk", s->sysclk);
+    if (!sysbus_realize(SYS_BUS_DEVICE(&s->syscfg), errp))
+    {
         return;
     }
     busdev = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(busdev, 0, 0x40013800);
 
     // REALIZING LPUART registers and controllers
-    for (i = 0; i < NXP_NUM_LPUARTS; i++) {
+    for (i = 0; i < NXP_NUM_LPUARTS; i++)
+    {
         dev = DEVICE(&(s->lpuarts[i]));
         qdev_prop_set_chr(dev, "chardev", serial_hd(i));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpuarts[i]), errp)) {
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpuarts[i]), errp))
+        {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
@@ -354,9 +357,11 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp){
         sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, lpuart_irq[i]));
     }
     // REALIZING LPSPI
-    for (i = 0; i < NXP_NUM_LPSPIS; i++) {
+    for (i = 0; i < NXP_NUM_LPSPIS; i++)
+    {
         dev = DEVICE(&(s->lpspis[i]));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspis[i]), errp)) {
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspis[i]), errp))
+        {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
@@ -374,11 +379,11 @@ static void nxps32k358_soc_class_init(ObjectClass *klass, const void *data)
 }
 
 static const TypeInfo nxps32k358_soc_info = {
-    .name          = TYPE_NXPS32K358_SOC,
-    .parent        = TYPE_SYS_BUS_DEVICE,
+    .name = TYPE_NXPS32K358_SOC,
+    .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(NXPS32K358State),
     .instance_init = nxps32k358_soc_initfn,
-    .class_init    = nxps32k358_soc_class_init,
+    .class_init = nxps32k358_soc_class_init,
 };
 
 static void nxps32k358_soc_types(void)
