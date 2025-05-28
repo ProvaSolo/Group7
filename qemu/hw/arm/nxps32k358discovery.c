@@ -68,4 +68,4 @@ static void nxp_s32k358discovery_machine_init(MachineClass *mc)
     mc->no_parallel = 1;
 }
 
-DEFINE_MACHINE("nxps32k358discovery", nxp_s32k358discovery_machine_init)
+DEFINE_MACHINE("nxps32k358evb", nxp_s32k358discovery_machine_init)

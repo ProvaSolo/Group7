@@ -18,17 +18,23 @@ make -j$(nproc)
 
 ## Test
 
+Testing with a dummy firmware
 ```bash
 cd qemu/build
-./qemu-system-arm -M nxps32k358discovery -nographic -kernel ../../Test/Dummy_firmware/dummy.bin -bios none
+./qemu-system-arm -M nxps32k358ev -nographic -kernel ../../Test/Dummy_firmware/dummy.bin -bios none
 ```
 Testing the elf file generated from NXP S32 Design Studio
 
 ```bash
 ./build/qemu-system-arm \
-    -M nxps32k358discovery \
+    -M nxps32k358evb \
     -kernel /home/vitoc/Group7/App/Test_S32_Pin/FreeRTOS_Toggle_Led_Example_S32K358_3.elf \
     -nographic \
     -S -s
+```
+
+Running our FreeRTOS OS on modified qemu
+```bash
+
 ```
 
