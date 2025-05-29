@@ -94,6 +94,7 @@ SOURCE_FILES += $(PROJECT)/main.c
 # SOURCE_FILES += $(PROJECT)/MPU/mpu_setup.c
 SOURCE_FILES += $(PROJECT)/Peripherals/uart.c
 SOURCE_FILES += $(PROJECT)/Peripherals/lpspi.c
+SOURCE_FILES += $(PROJECT)/main.c
 #SOURCE_FILES += $(PROJECT)/SecureTimeoutSystem/secure_timeout_system.c
 SOURCE_FILES += $(PROJECT)/Peripherals/printf-stdarg.c
 
@@ -138,14 +139,19 @@ qemu_start:
 run: clean all qemu_start
 
 # Run QEMU emulator in debug mode
+# -monitor none disables the QEMU monitor in order to use GDB on another terminal
+# -s enables the GDB server on port 1234
+# -nographic disables the graphical output, using stdio for serial output
+# -serial stdio redirects the serial output to the terminal using the UART interface
 qemu_debug:
 	$(QEMU) -machine $(MACHINE) -cpu $(CPU) -kernel $(ELF) -monitor none -nographic -serial stdio $(QEMU_FLAGS_DBG)
 
-# Start GDB
+# Start GDB and after that connect to the QEMU GDB server with target remote localhost:1234
 gdb_start:
 	gdb-multiarch $(ELF)
 
 # Run QEMU emulator with monitor
+# -monitor stdio allows interaction with the QEMU monitor through the same terminal
 qemu_monitor:
 	$(QEMU) -machine $(MACHINE) -cpu $(CPU) -kernel $(ELF) -monitor stdio
 
