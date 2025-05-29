@@ -1,7 +1,7 @@
 #include "uart.h"
 #include "printf-stdarg.h" // Per UART_printf
 #include <stdarg.h>
-
+#include <stddef.h>
 // Clock di sistema presunto per il calcolo del baud rate.
 // Dovrebbe corrispondere a quello configurato in QEMU e FreeRTOSConfig.h
 // #define DEFAULT_SYSTEM_CLOCK 143000000UL // Esempio, da configCPU_CLOCK_HZ
