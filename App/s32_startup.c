@@ -30,6 +30,12 @@ static void Default_Handler(void);
 /* Main application entry */
 extern int main(void);
 
+/* LPUART and LPSPI interrupt handlers */
+extern void LPUART0_IRQHandler(void);
+extern void LPUART1_IRQHandler(void);
+extern void LPSPI0_IRQHandler(void);
+extern void LPSPI1_IRQHandler(void);
+
 /* Fault diagnostic functions */
 void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) __attribute__((used));
 void print_fault_info(uint32_t cfsr, uint32_t mmfar, uint32_t bfar);
@@ -38,7 +44,7 @@ void print_fault_info(uint32_t cfsr, uint32_t mmfar, uint32_t bfar);
 /* Reset Handler - Core initialization sequence                                            */
 /*-----------------------------------------------------------------------------------------*/
 
-void Reset_Handler(void) 
+void Reset_Handler(void)
 {
     /* 1. Initialize main stack pointer */
     __asm volatile (
@@ -62,6 +68,9 @@ void Reset_Handler(void)
     /* 5. Call platform initialization */
     extern void SystemInit(void);
     SystemInit();
+    /* Inizializzazione di LPUART e LPSPI */
+    LPUART_Init();
+    LPSPI_Init();
 
     /* 6. Jump to main application */
     main();
@@ -113,12 +122,12 @@ void HardFault_Handler(void)
 void print_fault_info(uint32_t cfsr, uint32_t mmfar, uint32_t bfar)
 {
     char buf[64];
-    
+
     /* CFSR Decoding */
     UART_printf("\nConfigurable Fault Status Register:\n");
     snprintf(buf, sizeof(buf), "  CFSR: 0x%08lX\n", cfsr);
     UART_printf(buf);
-    
+
     /* Memory Management Faults */
     if(cfsr & 0xFF) {
         UART_printf("  Memory Management Fault:\n");
@@ -155,7 +164,7 @@ void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress)
 
     char buffer[100];
     UART_printf("\n*** Hardware Fault Detected ***\n");
-    
+
     /* Print general registers */
     snprintf(buffer, sizeof(buffer), "R0   = 0x%08lX\n", r0);  UART_printf(buffer);
     snprintf(buffer, sizeof(buffer), "R1   = 0x%08lX\n", r1);  UART_printf(buffer);
@@ -168,7 +177,7 @@ void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress)
 
     /* Detailed fault analysis */
     print_fault_info(cfsr, mmfar, bfar);
-    
+
     while(1);
 }
 
@@ -204,14 +213,54 @@ const uint32_t* isr_vector[] __attribute__((section(".isr_vector"))) = {
     0,                                         /* Reserved */
     (uint32_t*)xPortPendSVHandler,             /* FreeRTOS PendSV */
     (uint32_t*)xPortSysTickHandler,            /* FreeRTOS SysTick */
+    // IRQ 0-7 (Indici 16-23)
     0,0,0,0,
     0,0,0,0,
     /* Peripheral Interrupts */
-    (uint32_t*)TIMER0_IRQHandler,              /* Timer 0 */
-    (uint32_t*)TIMER1_IRQHandler,              /* Timer 1 */
-    (uint32_t*)TIMER2_IRQHandler,              /* Timer 2 */
-    
+    // IRQ 8-15 (Indici 24-31) - Timer slots now set to 0
+    0,                                         /* Timer 0 (IRQ 8 - Indice 24) - Rimosso */
+    0,                                         /* Timer 1 (IRQ 9 - Indice 25) - Rimosso */
+    0,                                         /* Timer 2 (IRQ 10 - Indice 26) - Rimosso */
+    0,                                         /* IRQ 11 (Indice 27) */
+    0,                                         /* IRQ 12 (Indice 28) */
+    0,                                         /* IRQ 13 (Indice 29) */
+    0,                                         /* IRQ 14 (Indice 30) */
+    0,                                         /* IRQ 15 (Indice 31) */
+    // IRQ 16-23 (Indici 32-39)
+    0,0,0,0,0,0,0,0,
+    // IRQ 24-31 (Indici 40-47)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
+    // IRQ 32-39 (Indici 48-55)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
+    // IRQ 40-47 (Indici 56-63)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
+    // IRQ 48-55 (Indici 64-71)
+    (uint32_t*)Default_Handler,                /* IRQ 48 (Indice 64) */
+    (uint32_t*)LPUART0_IRQHandler,             /* LPUART0 (IRQ 49 - Indice 65) */
+    (uint32_t*)LPUART1_IRQHandler,             /* LPUART1 (IRQ 50 - Indice 66) */
+    (uint32_t*)Default_Handler,                /* IRQ 51 (Indice 67) */
+    (uint32_t*)Default_Handler,                /* IRQ 52 (Indice 68) */
+    (uint32_t*)Default_Handler,                /* IRQ 53 (Indice 69) */
+    (uint32_t*)Default_Handler,                /* IRQ 54 (Indice 70) */
+    (uint32_t*)Default_Handler,                /* IRQ 55 (Indice 71) */
+    // IRQ 56-63 (Indici 72-79)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
+    // IRQ 64-71 (Indici 80-87)
+    (uint32_t*)Default_Handler,                /* IRQ 64 (Indice 80) */
+    (uint32_t*)Default_Handler,                /* IRQ 65 (Indice 81) */
+    (uint32_t*)Default_Handler,                /* IRQ 66 (Indice 82) */
+    (uint32_t*)Default_Handler,                /* IRQ 67 (Indice 83) */
+    (uint32_t*)Default_Handler,                /* IRQ 68 (Indice 84) */
+    (uint32_t*)Default_Handler,                /* IRQ 69 (Indice 85) */
+    (uint32_t*)LPSPI0_IRQHandler,              /* LPSPI0 (IRQ 70 - Indice 86) */
+    (uint32_t*)LPSPI1_IRQHandler,              /* LPSPI1 (IRQ 71 - Indice 87) */
+    // IRQ 72-79 (Indici 88-95)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
+    // IRQ 80-87 (Indici 96-103)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
     /* Other interrupts not initialized in the Board */
+    // ... (il resto della tabella dei vettori rimane invariato e pieno di 0 o Default_Handler)
+    (uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,(uint32_t*)Default_Handler,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
@@ -240,7 +289,93 @@ const uint32_t* isr_vector[] __attribute__((section(".isr_vector"))) = {
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,
-    0,0,0,0,0
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0
 };
-
-/*-----------------------------------------------------------------------------------------*/
