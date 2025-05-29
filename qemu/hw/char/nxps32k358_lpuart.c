@@ -59,10 +59,8 @@ static int nxps32k358_lpuart_can_receive(void *opaque)
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(opaque);
 
     // Controlla se c'è spazio nella FIFO di ricezione o se il ricevitore è abilitato
-    if (!(s->lpuart_cr & LPUART_CTRL_RE))
-    {
-        return 1; // Non può ricevere
-    }
+    if (!(s->lpuart_cr & LPUART_CTRL_RE))  return 1; // Non può ricevere
+    
     return 0; // Può ricevere
 }
 
@@ -139,6 +137,7 @@ static uint64_t nxps32k358_lpuart_read(void *opaque, hwaddr offset, unsigned siz
         qemu_log_mask(LOG_UNIMP, "NXP S32K3 LPUART: Unimplemented read offset 0x%" HWADDR_PRIx "\n", offset);
         return 0;
     }
+
     return ret;
 }
 
@@ -155,7 +154,7 @@ static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64,
         s->baud_rate_config = value;
         // Qui dovresti ricalcolare/riconfigurare il baud rate effettivo se lo emuli
         // qemu_log_mask(LOG_GUEST_ERROR, "LPUART BAUD set to 0x%08x\n", (uint32_t)value);
-        break;
+        return;
     case LPUART_STAT:
         if (value <= 0x3FF)
         {
@@ -163,17 +162,14 @@ static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64,
             only be set by hardware, so keep it set here. */
             s->lpuart_sr = value | LPUART_STAT_TDRE;
         }
-        else
-        {
-            s->lpuart_sr &= value;
-        }
-        break;
+        else s->lpuart_sr &= value;
+        return;
     case LPUART_CTRL:
         s->lpuart_cr = value;
         nxps32k358_lpuart_update_irq(s);
 
         // qemu_log_mask(LOG_GUEST_ERROR, "LPUART CTRL set to 0x%08x\n", (uint32_t)value);
-        break;
+        return;
     case LPUART_DATA:
         if (value < 0xF000)
         {
@@ -189,38 +185,22 @@ static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64,
             s->lpuart_sr |= LPUART_STAT_TDRE;
             nxps32k358_lpuart_update_irq(s);
         }
+        return;
     default:
-        qemu_log_mask(LOG_UNIMP, "NXP S32K3 LPUART: Unimplemented write offset 0x%" HWADDR_PRIx " val 0x%" PRIx64 "\n", offset, value);
-        break;
+        qemu_log_mask(LOG_GUEST_ERROR,"%s: NXP S32K3 LPUART: Unimplemented write to offset 0x%" HWADDR_PRIx " with value 0x%" PRIx32 "\n",
+                      __func__, offset, value);        
     }
-    nxps32k358_lpuart_update_irq(s);
 }
 
-// // Funzione per inviare un carattere dal guest all'host (QEMU)
-// static void nxps32k358_lpuart_transmit(NXPS32K358LPUARTState *s) {
-//     if (s->tx_char_pending && (s->lpuart_cr & LPUART_CTRL_TE)) {
-//         if (qemu_chr_fe_write(&s->chr, &s->tx_char, 1) == 1) {
-//             s->tx_char_pending = false;
-//             s->lpuart_sr |= LPUART_STAT_TDRE; // Transmit Data Register Empty
-//             // Potrebbe essere necessario un interrupt di "Transmit Complete" o "TX FIFO Empty"
-//             nxps32k358_lpuart_update_irq(s);
-//              qemu_log_mask(LOG_GUEST_ERROR, "LPUART TX: %02x ('%c')\n", s->tx_char, isprint(s->tx_char) ? s->tx_char : '.');
-//         } else {
-//             // Il backend non può accettare il carattere ora, riprova più tardi
-//             // Questo richiede una gestione più complessa con timer o attesa che il backend sia pronto
-//              qemu_log_mask(LOG_GUEST_ERROR, "LPUART TX: backend busy for %02x\n", s->tx_char);
-//         }
-//     }
-// }
 
 // FINAL FUNCTION FOR EACH VIRTUALIZED DEVICE
 static const MemoryRegionOps nxps32k358_lpuart_ops = {
     .read = nxps32k358_lpuart_read,
     .write = nxps32k358_lpuart_write,
-    .endianness = DEVICE_LITTLE_ENDIAN, // Verifica l'endianness delle periferiche S32K3
+    .endianness = DEVICE_NATIVE_ENDIAN, // Verifica l'endianness delle periferiche S32K3
 };
 
-static Property nxps32k358_lpuart_properties[] = {
+static const Property nxps32k358_lpuart_properties[] = {
     DEFINE_PROP_CHR("chardev", NXPS32K358LPUARTState, chr),
 };
 
@@ -228,17 +208,20 @@ static void nxps32k358_lpuart_init(Object *obj)
 {
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(obj);
 
+        // Inizializza la linea IRQ
+    sysbus_init_irq(SYS_BUS_DEVICE(obj), &s->irq);
+
     // Inizializza la MemoryRegion per i registri della LPUART
     // La dimensione (es. 0x1000 o 4KB) deve coprire tutti i registri LPUART
     memory_region_init_io(&s->iomem, obj, &nxps32k358_lpuart_ops, s,
                           "nxps32k358-lpuart", 0x1000); // Dimensione esempio
+
+
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->iomem);
 
-    // Inizializza la linea IRQ
-    sysbus_init_irq(SYS_BUS_DEVICE(obj), &s->irq);
 
     // Inizializza il backend per i caratteri
-    qdev_prop_set_chr(DEVICE(obj), "chardev", qemu_chr_fe_get_driver(&s->chr)); // Permette di specificare -serial ...
+    //qdev_prop_set_chr(DEVICE(obj), "chardev", qemu_chr_fe_get_driver(&s->chr)); // Permette di specificare -serial ...
                                                                                 // o un altro chardev
 }
 
