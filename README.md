@@ -10,6 +10,7 @@ sudo apt upgrade
 1. git pull
 2. git submodule update --init --recursive
 
+Verificare anche il comando ./configure, forse piu completo
 ```bash
 ./configure --target-list=arm-softmmu --enable-debug
 make -j$(nproc)
