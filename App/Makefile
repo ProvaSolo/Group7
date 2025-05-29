@@ -94,7 +94,6 @@ SOURCE_FILES += $(PROJECT)/main.c
 # SOURCE_FILES += $(PROJECT)/MPU/mpu_setup.c
 SOURCE_FILES += $(PROJECT)/Peripherals/uart.c
 SOURCE_FILES += $(PROJECT)/Peripherals/lpspi.c
-SOURCE_FILES += $(PROJECT)/main.c
 #SOURCE_FILES += $(PROJECT)/SecureTimeoutSystem/secure_timeout_system.c
 SOURCE_FILES += $(PROJECT)/Peripherals/printf-stdarg.c
 

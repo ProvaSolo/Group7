@@ -69,8 +69,8 @@ void Reset_Handler(void)
     extern void SystemInit(void);
     SystemInit();
     /* Inizializzazione di LPUART e LPSPI */
-    LPUART_Init();
-    LPSPI_Init();
+    UART_Init();
+    LPSPI_MasterInit();
 
     /* 6. Jump to main application */
     main();
