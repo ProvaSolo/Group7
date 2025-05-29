@@ -1,188 +1,246 @@
-#include <stdint.h>
+/* startup.c */
 
-// Simboli definiti dal linker script
-extern uint32_t _sidata;    // Indirizzo di inizio dei dati inizializzati in Flash
-extern uint32_t _sdata;     // Indirizzo di inizio dei dati inizializzati in RAM
-extern uint32_t _edata;     // Indirizzo di fine dei dati inizializzati in RAM
-extern uint32_t _sbss;      // Indirizzo di inizio della sezione .bss
-extern uint32_t _ebss;      // Indirizzo di fine della sezione .bss
-extern uint32_t _estack;    // Indirizzo di fine dello stack (inizio dello stack)
+/* Peripheral includes */
+#include "uart.h"
+#include "lpspi.h"
+#include <stdio.h>
 
-// Prototipo della funzione main
+/* FreeRTOS interrupt handlers */
+extern void vPortSVCHandler( void );
+extern void xPortPendSVHandler( void );
+extern void xPortSysTickHandler( void );
+
+/* Memory section markers from linker script */
+extern uint32_t _estack;     /* Stack top          */
+extern uint32_t _sidata;     /* .data LMA (Flash)  */
+extern uint32_t _sdata;      /* .data VMA (RAM)    */
+extern uint32_t _edata;      /* End of .data       */
+extern uint32_t _sbss;       /* Start of .bss      */
+extern uint32_t _ebss;       /* End of .bss        */
+
+/* Exception handlers */
+void Reset_Handler(void) __attribute__((naked));
+static void HardFault_Handler(void) __attribute__((naked));
+static void MemManage_Handler(void) __attribute__((naked));
+static void Default_Handler(void);
+
+/* MPU initialization */
+// extern void vPortSetupMPU(void);
+
+/* Main application entry */
 extern int main(void);
 
-// Prototipo della funzione SystemInit (opzionale, fornita da NXP o configurata dall'utente)
-// Serve per inizializzare il clock di sistema e altre configurazioni hardware di basso livello.
-// Se non la usi o è chiamata altrove, puoi commentarla o rimuoverla.
-// extern void SystemInit(void); 
+/* Fault diagnostic functions */
+void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) __attribute__((used));
+void print_fault_info(uint32_t cfsr, uint32_t mmfar, uint32_t bfar);
 
-// Prototipi dei gestori di interrupt di FreeRTOS
-extern void xPortSysTickHandler(void);
-extern void vPortSVCHandler(void);
-extern void xPortPendSVHandler(void);
+/*-----------------------------------------------------------------------------------------*/
+/* Reset Handler - Core initialization sequence                                            */
+/*-----------------------------------------------------------------------------------------*/
 
-// Funzione di reset handler
-void Reset_Handler(void);
+void Reset_Handler(void) 
+{
+    /* 1. Initialize main stack pointer */
+    __asm volatile (
+        "ldr r0, =_estack\n\t"
+        "msr msp, r0"
+    );
 
-// Default handler per gli interrupt non gestiti
-void Default_Handler(void) {
-    while (1);
-}
+    /* 2. MPU Setup - Must happen before any memory access */
+    // vPortSetupMPU();
 
-// Gestori di interrupt deboli, possono essere sovrascritti
-void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void HardFault_Handler(void) __attribute__((weak, alias("Default_Handler"))); // Spesso si implementa un gestore specifico
-void MemManage_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void BusFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void UsageFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-// SVC_Handler è gestito da FreeRTOS (vPortSVCHandler)
-void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
-// PendSV_Handler è gestito da FreeRTOS (xPortPendSVHandler)
-// SysTick_Handler è gestito da FreeRTOS (xPortSysTickHandler)
+    /* 3. Copy data segment from flash to RAM */
+    uint32_t *data_load = &_sidata;
+    uint32_t *data_vma = &_sdata;
+    while(data_vma < &_edata) *data_vma++ = *data_load++;
 
-// Aggiungi qui altri gestori di interrupt specifici per S32K3xx se necessario,
-// altrimenti verranno gestiti da Default_Handler.
-// Esempio:
-// void LPUART0_RxTx_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
+    /* 4. Zero-initialize BSS segment */
+    uint32_t *bss_start = &_sbss;
+    uint32_t *bss_end = &_ebss;
+    while(bss_start < bss_end) *bss_start++ = 0;
 
+    /* 5. Call platform initialization */
+    extern void SystemInit(void);
+    SystemInit();
 
-// Tabella dei vettori di interrupt
-// Nota: Il primo valore è l'indirizzo iniziale dello stack.
-// Il secondo è l'indirizzo del Reset_Handler.
-// Questa tabella deve essere allineata e posizionata all'inizio della Flash.
-__attribute__((section(".isr_vector")))
-const void * const g_pfnVectors[] = {
-    (void *)&_estack,            // Initial Stack Pointer
-    Reset_Handler,               // Reset Handler
-    NMI_Handler,                 // NMI Handler
-    HardFault_Handler,           // Hard Fault Handler
-    MemManage_Handler,           // MPU Fault Handler
-    BusFault_Handler,            // Bus Fault Handler
-    UsageFault_Handler,          // Usage Fault Handler
-    0,                           // Reserved
-    0,                           // Reserved
-    0,                           // Reserved
-    0,                           // Reserved
-    vPortSVCHandler,             // SVCall Handler (FreeRTOS)
-    DebugMon_Handler,            // Debug Monitor Handler
-    0,                           // Reserved
-    xPortPendSVHandler,          // PendSV Handler (FreeRTOS)
-    xPortSysTickHandler,         // SysTick Handler (FreeRTOS)
-
-    // Interrupt specifici del dispositivo S32K3xx (IRQ0 in poi)
-    // Questi devono corrispondere al manuale di riferimento del tuo S32K3xx.
-    // È FONDAMENTALE che questa tabella sia corretta e completa per il tuo specifico MCU.
-    // Per S32K344 ci sono circa 240 interrupt. Riempire con Default_Handler
-    // per tutti gli interrupt non esplicitamente gestiti.
-    // Questa è una versione ancora abbreviata, ma più estesa della precedente.
-    // CONSULTARE IL REFERENCE MANUAL PER LA LISTA COMPLETA DEGLI IRQ.
-    Default_Handler, // IRQ0
-    Default_Handler, // IRQ1
-    Default_Handler, // IRQ2
-    Default_Handler, // IRQ3
-    Default_Handler, // IRQ4
-    Default_Handler, // IRQ5
-    Default_Handler, // IRQ6
-    Default_Handler, // IRQ7
-    Default_Handler, // IRQ8
-    Default_Handler, // IRQ9
-    Default_Handler, // IRQ10
-    Default_Handler, // IRQ11
-    Default_Handler, // IRQ12
-    Default_Handler, // IRQ13
-    Default_Handler, // IRQ14
-    Default_Handler, // IRQ15
-    Default_Handler, // IRQ16
-    Default_Handler, // IRQ17
-    Default_Handler, // IRQ18
-    Default_Handler, // IRQ19
-    Default_Handler, // IRQ20
-    // ... (continuare a riempire con Default_Handler fino all'ultimo IRQ supportato)
-    // Esempio: se ci sono 240 IRQ, servono 240 voci qui.
-    // Per brevità, ci fermiamo qui, ma una tabella completa è necessaria per la produzione.
-    // Aggiungiamo altri placeholder per arrivare a un numero più ragionevole per una demo estesa.
-    Default_Handler, Default_Handler, Default_Handler, Default_Handler, // IRQ 21-24
-    Default_Handler, Default_Handler, Default_Handler, Default_Handler, // IRQ 25-28
-    Default_Handler, Default_Handler, Default_Handler, Default_Handler, // IRQ 29-32
-    // ... e così via fino all'ultimo IRQ
-};
-
-
-void Reset_Handler(void) {
-    uint32_t *pSrc, *pDest;
-
-    // 1. Copia la sezione .data da Flash a RAM
-    pSrc = &_sidata;
-    pDest = &_sdata;
-    while (pDest < &_edata) {
-        *pDest++ = *pSrc++;
-    }
-
-    // 2. Inizializza la sezione .bss a zero
-    pDest = &_sbss;
-    while (pDest < &_ebss) {
-        *pDest++ = 0;
-    }
-
-    // 3. (Opzionale) Chiama SystemInit per configurare il clock di sistema
-    //    e altre inizializzazioni di basso livello.
-    //    SystemInit è tipicamente fornita da NXP (es. in system_S32K3xx.c).
-    //    Se non la usi o è già gestita, puoi ometterla.
-    // #if defined (__USE_CMSIS) || defined (USE_SYSTEM_INIT) // Condizionale se usi CMSIS o una define custom
-    // SystemInit();
-    // #endif
-
-    // 4. Chiama la funzione main dell'applicazione
+    /* 6. Jump to main application */
     main();
 
-    // 5. Se main ritorna (non dovrebbe mai accadere in un'applicazione embedded)
-    while (1);
-}
-
-// Nota: Per un HardFault_Handler più utile, potresti voler stampare
-// lo stato dei registri o salvare informazioni di debug.
-// Esempio (molto basilare, richiede implementazione di printf/UART già funzionante):
-/*
-void HardFault_Handler_C(unsigned int *hardfault_args) {
-    // unsigned int stacked_r0 = ((unsigned long) hardfault_args[0]);
-    // unsigned int stacked_r1 = ((unsigned long) hardfault_args[1]);
-    // unsigned int stacked_r2 = ((unsigned long) hardfault_args[2]);
-    // unsigned int stacked_r3 = ((unsigned long) hardfault_args[3]);
-    // unsigned int stacked_r12 = ((unsigned long) hardfault_args[4]);
-    // unsigned int stacked_lr = ((unsigned long) hardfault_args[5]);
-    // unsigned int stacked_pc = ((unsigned long) hardfault_args[6]);
-    // unsigned int stacked_psr = ((unsigned long) hardfault_args[7]);
-
-    // UART_printf("HardFault!\n");
-    // UART_printf("R0 = %x, R1 = %x, R2 = %x, R3 = %x\n", stacked_r0, stacked_r1, stacked_r2, stacked_r3);
-    // UART_printf("R12 = %x, LR = %x, PC = %x, PSR = %x\n", stacked_r12, stacked_lr, stacked_pc, stacked_psr);
-    // UART_printf("BFAR = %x\n", (*((volatile unsigned long *)(0xE000ED38))));
-    // UART_printf("CFSR = %x\n", (*((volatile unsigned long *)(0xE000ED28))));
-    // UART_printf("HFSR = %x\n", (*((volatile unsigned long *)(0xE000ED2C))));
-    // UART_printf("DFSR = %x\n", (*((volatile unsigned long *)(0xE000ED30))));
-    // UART_printf("AFSR = %x\n", (*((volatile unsigned long *)(0xE000ED3C))));
-
+    /* 7. Fallback if main returns */
     while(1);
 }
 
-__attribute__((naked))
-void HardFault_Handler(void) {
+/*-----------------------------------------------------------------------------------------*/
+/* Memory Management Fault Handler (MPU violations)                                        */
+/*-----------------------------------------------------------------------------------------*/
+
+void MemManage_Handler(void)
+{
     __asm volatile (
-        " movs r0, #4       \n"
-        " mov r1, lr        \n"
-        " tst r0, r1        \n" // Check if Thread mode (LR bit 2)
-        " beq _MSP          \n" // Branch to _MSP if 0 (MSP was used)
-        " mrs r0, psp       \n" // PSP was used, so r0 = psp
-        " b _GetRegs        \n" // Branch to _GetRegs
-        "_MSP:              \n"
-        " mrs r0, msp       \n" // MSP was used, so r0 = msp
-        "_GetRegs:          \n"
-        " ldr r1, [r0, #24] \n" // Get stacked PC
-        " ldr r2, =HardFault_Handler_C \n"
-        " bx r2             \n"
-        : // No output
-        : // No input
-        : "r0", "r1", "r2" // Clobbered registers
+        " tst lr, #4              \n"
+        " ite eq                  \n"
+        " mrseq r0, msp           \n"
+        " mrsne r0, psp           \n"
+        " ldr r1, [r0, #24]       \n"
+        " ldr r2, =prvGetRegistersFromStack \n"
+        " bx r2                   \n"
+        " .ltorg                  \n"
     );
 }
-*/
+
+/*-----------------------------------------------------------------------------------------*/
+/* Hard Fault Handler - Generic fault catcher                                              */
+/*-----------------------------------------------------------------------------------------*/
+
+void HardFault_Handler(void)
+{
+    __asm volatile (
+        " tst lr, #4              \n"
+        " ite eq                  \n"
+        " mrseq r0, msp           \n"
+        " mrsne r0, psp           \n"
+        " ldr r1, [r0, #24]       \n"
+        " ldr r2, =prvGetRegistersFromStack \n"
+        " bx r2                   \n"
+        " .ltorg                  \n"
+    );
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* Fault Register Analysis                                                                 */
+/*-----------------------------------------------------------------------------------------*/
+
+void print_fault_info(uint32_t cfsr, uint32_t mmfar, uint32_t bfar)
+{
+    char buf[64];
+    
+    /* CFSR Decoding */
+    UART_printf("\nConfigurable Fault Status Register:\n");
+    snprintf(buf, sizeof(buf), "  CFSR: 0x%08lX\n", cfsr);
+    UART_printf(buf);
+    
+    /* Memory Management Faults */
+    if(cfsr & 0xFF) {
+        UART_printf("  Memory Management Fault:\n");
+        if(cfsr & (1 << 0)) UART_printf("    IACCVIOL: Instruction access violation\n");
+        if(cfsr & (1 << 1)) UART_printf("    DACCVIOL: Data access violation\n");
+        if(cfsr & (1 << 3)) UART_printf("    MUNSTKERR: MemManage on exception return\n");
+        if(cfsr & (1 << 4)) UART_printf("    MSTKERR: MemManage on exception entry\n");
+        if(cfsr & (1 << 7)) {
+            snprintf(buf, sizeof(buf), "    MMFAR: 0x%08lX\n", mmfar);
+            UART_printf(buf);
+        }
+    }
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* Register Dump from Fault Context                                                        */
+/*-----------------------------------------------------------------------------------------*/
+
+void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress)
+{
+    volatile uint32_t r0  = pulFaultStackAddress[0];
+    volatile uint32_t r1  = pulFaultStackAddress[1];
+    volatile uint32_t r2  = pulFaultStackAddress[2];
+    volatile uint32_t r3  = pulFaultStackAddress[3];
+    volatile uint32_t r12 = pulFaultStackAddress[4];
+    volatile uint32_t lr  = pulFaultStackAddress[5];
+    volatile uint32_t pc  = pulFaultStackAddress[6];
+    volatile uint32_t psr = pulFaultStackAddress[7];
+
+    /* Get fault status registers */
+    uint32_t cfsr  = *(volatile uint32_t*)0xE000ED28;
+    uint32_t mmfar = *(volatile uint32_t*)0xE000ED34;
+    uint32_t bfar  = *(volatile uint32_t*)0xE000ED38;
+
+    char buffer[100];
+    UART_printf("\n*** Hardware Fault Detected ***\n");
+    
+    /* Print general registers */
+    snprintf(buffer, sizeof(buffer), "R0   = 0x%08lX\n", r0);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "R1   = 0x%08lX\n", r1);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "R2   = 0x%08lX\n", r2);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "R3   = 0x%08lX\n", r3);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "R12  = 0x%08lX\n", r12); UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "LR   = 0x%08lX\n", lr);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "PC   = 0x%08lX\n", pc);  UART_printf(buffer);
+    snprintf(buffer, sizeof(buffer), "PSR  = 0x%08lX\n", psr); UART_printf(buffer);
+
+    /* Detailed fault analysis */
+    print_fault_info(cfsr, mmfar, bfar);
+    
+    while(1);
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* Default Exception Handler                                                               */
+/*-----------------------------------------------------------------------------------------*/
+
+void Default_Handler(void)
+{
+    __asm volatile(
+        "Infinite_Loop:\n"
+        "    b Infinite_Loop\n"
+    );
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/* Interrupt Vector Table                                                                  */
+/*-----------------------------------------------------------------------------------------*/
+
+const uint32_t* isr_vector[] __attribute__((section(".isr_vector"))) = {
+
+    /* Core Exceptions */
+    (uint32_t*)&_estack,                       /* Initial Stack Pointer */
+    (uint32_t*)Reset_Handler,                  /* Reset Handler */
+    (uint32_t*)Default_Handler,                /* NMI */
+    (uint32_t*)HardFault_Handler,              /* Hard Fault */
+    (uint32_t*)MemManage_Handler,              /* MPU Fault */
+    (uint32_t*)Default_Handler,                /* Bus Fault */
+    (uint32_t*)Default_Handler,                /* Usage Fault */
+    0, 0, 0, 0,                                /* Reserved */
+    (uint32_t*)vPortSVCHandler,                /* FreeRTOS SVC */
+    (uint32_t*)Default_Handler,                /* Debug Monitor */
+    0,                                         /* Reserved */
+    (uint32_t*)xPortPendSVHandler,             /* FreeRTOS PendSV */
+    (uint32_t*)xPortSysTickHandler,            /* FreeRTOS SysTick */
+    0,0,0,0,
+    0,0,0,0,
+    /* Peripheral Interrupts */
+    (uint32_t*)TIMER0_IRQHandler,              /* Timer 0 */
+    (uint32_t*)TIMER1_IRQHandler,              /* Timer 1 */
+    (uint32_t*)TIMER2_IRQHandler,              /* Timer 2 */
+    
+    /* Other interrupts not initialized in the Board */
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0
+};
+
+/*-----------------------------------------------------------------------------------------*/
