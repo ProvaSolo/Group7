@@ -257,7 +257,7 @@ The S32K358 SoC implements a standard memory map:
 | Flash Memory        | 0x08000000            | 1,048,576 B (1MB)  | Program memory     |
 | System Memory Alias | 0x00000000            | 1,048,576 B (1MB)  | Boot memory alias  |
 | SRAM                | 0x20000000            | 131,072 B (128KB)  | Data memory        |
-+---------------------+-----------------------+-------------------+---------------------+
++---------------------+-----------------------+--------------------+--------------------+
 ```
 
 ### Register Interface
