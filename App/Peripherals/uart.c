@@ -6,7 +6,7 @@
 // Dovrebbe corrispondere a quello configurato in QEMU e FreeRTOSConfig.h
 // #define DEFAULT_SYSTEM_CLOCK 143000000UL // Esempio, da configCPU_CLOCK_HZ
 
-void UART_Init(LPUART_Type *base, uint32_t sysclk, uint32_t baudrate) {
+void UART_Init() {
     // Nota: l'abilitazione del clock per LPUART dovrebbe essere gestita
     // a un livello più basso (es. SystemInit o specifico init della board in QEMU).
     // Qui assumiamo che il clock sia già abilitato.
@@ -39,16 +39,16 @@ void UART_Init(LPUART_Type *base, uint32_t sysclk, uint32_t baudrate) {
     // base->BAUD &= ~LPUART_BAUD_SBNS_MASK; // 1 stop bit (se SBNS=0)
 
     // Abilita trasmettitore e ricevitore
-    base->CTRL |= LPUART_CTRL_TE_MASK | LPUART_CTRL_RE_MASK;
+    base->CTRL |= LPUART_CTRL_TE | LPUART_CTRL_RE;
 }
 
-void UART_SendChar(LPUART_Type *base, uint8_t data) {
+void UART_SendChar(uint8_t data) {
     // Attendi che il buffer di trasmissione sia vuoto
     while (!(base->STAT & LPUART_STAT_TDRE_MASK));
     base->DATA = data;
 }
 
-uint8_t UART_ReceiveChar(LPUART_Type *base) {
+uint8_t UART_ReceiveChar() {
     // Attendi che il buffer di ricezione sia pieno
     while (!(base->STAT & LPUART_STAT_RDRF_MASK));
     return (uint8_t)(base->DATA & 0xFF);
