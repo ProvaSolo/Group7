@@ -251,7 +251,7 @@ The SoC implements a hierarchical clocking structure:
 The S32K358 SoC implements a standard memory map:
 
 ```
-+---------------------+-----------------------+-----------------------------------------+
++---------------------+-----------------------+--------------------+--------------------+
 | Memory Type         | Base Address          | Size               | Description        |
 +---------------------+-----------------------+--------------------+--------------------+
 | Flash Memory        | 0x08000000            | 1,048,576 B (1MB)  | Program memory     |
