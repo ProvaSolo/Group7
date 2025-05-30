@@ -29,8 +29,6 @@ struct NXPS32K358State {
 
     NXPS32K358SYSCFGState syscfg;
     NXPS32K358LPUARTState lpuarts[NXP_NUM_LPUARTS];
-    //STM32F2XXTimerState timer[STM_NUM_TIMERS];
-    //STM32F2XXADCState adc[STM_NUM_ADCS];
     NXPS32K358LPSPIState lpspis[NXP_NUM_LPSPIS];
 
     OrIRQState *adc_irqs;
