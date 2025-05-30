@@ -277,18 +277,6 @@ uint32_t lpuart_get_status(uint32_t base) {
 }
 ```
 
-### Configuration and Customization
-
-The SoC model can be customized through QEMU command-line options:
-
-```bash
-qemu-system-arm -M nxps32k358 -cpu cortex-m7 -device nxps32k358-soc,sysclk-frequency=100000000,flash-size=2000000,ram-size=262144 \
-```
-
--   `sysclk-frequency`: System clock frequency in Hz
--   `flash-size`: Flash memory size in bytes
--   `ram-size`: SRAM size in bytes
-
 ### Conclusion
 
 The `nxps32k358_soc` module provides a comprehensive and flexible model of the NXP S32K358 SoC for QEMU-based development and simulation. This model includes support for multiple peripherals, configurable clocking, and appropriate memory mapping, making it suitable for embedded development, firmware testing, and system-level simulation.
