@@ -17,12 +17,18 @@ make -j$(nproc)
 ./qemu-system-arm -M help
 ```
 
+
+Anche noi abbiamo utilizzato la lpuart 3
+
 ## Test
 
 Testing with a dummy firmware
 ```bash
 cd qemu/build
 ./qemu-system-arm -M nxps32k358ev -nographic -kernel ../../Test/Dummy_firmware/dummy.bin -bios none
+
+./qemu-system-arm -M nxps32k3x8evb -nographic -kernel kernel.elf -serial none -serial none -serial none -serial mon:stdio -d guest_errors
+
 ```
 Testing the elf file generated from NXP S32 Design Studio
 
@@ -42,3 +48,10 @@ Running our FreeRTOS OS on modified qemu
 
 ```
 
+./qemu-system-arm -M nxps32k358evb -nographic -kernel ../../Demo_FreeRTOS.elf -serial none -serial none -serial no
+ne -serial mon:stdio -d guest_errors
+
+gdb --args ./qemu-system-arm -M nxps32k358evb -nographic -kernel ../../Demo_FreeRTOS.elf -serial none -serial none -serial no
+ne -serial mon:stdio -d guest_errors
+
+`-serial none` (three times) and then `-serial mon:stdio` since there are 16 LPUART interfaces and we are using LPUART 3 (the fourth) in our DEMO project, we disable the first three and then bind the fourth to STDIO

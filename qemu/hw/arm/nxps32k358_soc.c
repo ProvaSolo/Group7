@@ -358,10 +358,12 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     
     // Set up the CPU -> CONNECTING TO PINS
     armv7m = DEVICE(&s->armv7m);
-    qdev_prop_set_uint32(armv7m, "num-irq", 96);
+    qdev_prop_set_uint32(armv7m, "num-irq", 240);
     qdev_prop_set_uint8(armv7m, "num-prio-bits", 4);
     qdev_prop_set_string(armv7m, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m7"));
     qdev_prop_set_bit(armv7m, "enable-bitband", true);
+    qdev_prop_set_uint32(armv7m, "init-svtor", CODE_FLASH_BASE_ADDRESS + 2048);
+    qdev_prop_set_uint32(armv7m, "init-nsvtor", CODE_FLASH_BASE_ADDRESS + 2048);
     qdev_connect_clock_in(armv7m, "cpuclk", s->sysclk);
     qdev_connect_clock_in(armv7m, "refclk", s->refclk);
     object_property_set_link(OBJECT(&s->armv7m), "memory",
@@ -387,6 +389,13 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     {
         dev = DEVICE(&(s->lpuarts[i]));
         qdev_prop_set_chr(dev, "chardev", serial_hd(i));
+        // LPUART 0, 1 and 8 use AIPS_PLAT_CLK (MUX_0_DC_1)
+        // LPUART 2 to 7 and 9 to 15 use AIPS_SLOW_CLK (MUX_0_DC_2)
+        if (i < 2 || i == 8) {
+            qdev_connect_clock_in(dev, "clk", s->aips_plat_clk);
+        } else {
+            qdev_connect_clock_in(dev, "clk", s->aips_slow_clk);
+        }
         if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpuarts[i]), errp))
         {
             return;
