@@ -39,22 +39,19 @@
 
 static void nxp_s32k358discovery_init(MachineState *machine)
 {
-        // Cast the NXP machine from the generic machine
-    NXPS32K3X8EVBMachineState *m_state = NXPS32K3X8EVB_MACHINE(machine);
+    DeviceState *dev;
+    Clock *sysclk;
+    /* This clock doesn't need migration because it is fixed-frequency */
+    sysclk = clock_new(OBJECT(machine), "SYSCLK");
+    clock_set_hz(sysclk, SYSCLK_FRQ);
 
-    // Initialize system clock
-    m_state->sysclk = clock_new(OBJECT(machine), "SYSCLK");
-    clock_set_hz(m_state->sysclk, SYSCLK_FRQ);
+    dev = qdev_new(TYPE_NXPS32K358_SOC);
+    object_property_add_child(OBJECT(machine), "soc", OBJECT(dev));
+    qdev_connect_clock_in(dev, "sysclk", sysclk);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
 
-    // Initialize the SoC
-    object_initialize_child(OBJECT(machine), "s32k", &m_state->s32k,
-                            TYPE_NXPS32K358_SOC);
-    DeviceState *soc_state = DEVICE(&m_state->s32k);
-    qdev_connect_clock_in(soc_state, "sysclk", m_state->sysclk);
-    sysbus_realize(SYS_BUS_DEVICE(&m_state->s32k), &error_abort);
-
-    // Load kernel image
-    armv7m_load_kernel(ARM_CPU(first_cpu), machine->kernel_filename,
+    armv7m_load_kernel(NXPS32K358_SOC(dev)->armv7m.cpu,
+                       machine->kernel_filename,
                        CODE_FLASH_BASE_ADDRESS, CODE_FLASH_BLOCK_SIZE * 4);
 }
 
