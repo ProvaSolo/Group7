@@ -8,6 +8,38 @@
 #include "trace.h" // tracing system of qemu
 
 // SECONDA REVISIONE 20 MAY
+static uint32_t nxps32k358_lpuart_calculate_baud_rate(NXPS32K358LpuartState *s) {
+    uint32_t sbr;
+    uint32_t osr_val_in_reg; // Valore del campo OSR letto dal registro
+    uint64_t lpuart_module_clk_freq;
+
+    // 1. Estrai SBR (Baud Rate Modulo Divisor)
+    sbr = (s->baud_rate_config & LPUART_BAUD_SBR_MASK) >> LPUART_BAUD_SBR_SHIFT;
+
+    // 2. Estrai OSR (Over Sampling Ratio)
+    osr_val_in_reg = (s->baud_rate_config & LPUART_BAUD_OSR_MASK) >> LPUART_BAUD_OSR_SHIFT;
+   
+    lpuart_module_clk_freq = clock_get_hz(s->clk_in);
+
+    // 3. Calcola e restituisci il baud rate usando la formula diretta (osr + 1)
+    // ATTENZIONE: Questo non considera che se osr_val_in_reg < 3, l'oversampling effettivo è 16x.
+    uint64_t divisor = (uint64_t)(osr_val_in_reg + 1) * sbr;
+    if (divisor == 0) {
+        return 0;
+    }
+
+    return lpuart_module_clk_freq / divisor;
+
+    }
+
+    return lpuart_module_clk_freq / divisor;
+static void nxps32k358_lpuart_update_params(NXPS32K358LPUartState *s) {
+    QEMUSerialSetParams ssp;
+    ssp.speed = nxps32k358_lpuart_calculate_baud_rate(s);
+    DB_PRINT("Baud rate: %d\n", ssp.speed);
+
+    qemu_chr_fe_ioctl(&s->chr, CHR_IOCTL_SERIAL_SET_PARAMS, &ssp);
+}
 
 static void nxps32k358_lpuart_update_irq(NXPS32K358LPUARTState *s)
 {
@@ -152,8 +184,7 @@ static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64,
     {
     case LPUART_BAUD:
         s->baud_rate_config = value;
-        // Qui dovresti ricalcolare/riconfigurare il baud rate effettivo se lo emuli
-        // qemu_log_mask(LOG_GUEST_ERROR, "LPUART BAUD set to 0x%08x\n", (uint32_t)value);
+        nxps32k358_lpuart_update_params(s);
         return;
     case LPUART_STAT:
         if (value <= 0x3FF)

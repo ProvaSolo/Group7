@@ -32,6 +32,24 @@
 #define LPUART_CTRL_TIE  (1 << 23) // Transmit Interrupt Enable
 #define LPUART_CTRL_RIE  (1 << 21) // Receive Interrupt Enable
 
+// BAUD masks
+// --- Campo OSR (Over Sampling Ratio) ---
+// Bits 28-24 (5 bit totali)
+#define LPUART_BAUD_OSR_SHIFT   24U // Posizione del bit meno significativo (LSB) del campo OSR
+#define LPUART_BAUD_OSR_WIDTH   5U  // Numero di bit occupati dal campo OSR
+// Maschera per isolare i bit di OSR: crea una maschera di 'WIDTH' bit a 1 ( (1U << WIDTH) - 1 )
+// e poi la sposta nella posizione corretta (_SHIFT).
+#define LPUART_BAUD_OSR_MASK    (((1U << LPUART_BAUD_OSR_WIDTH) - 1) << LPUART_BAUD_OSR_SHIFT)
+// Esempio: ( (1U << 5) - 1 )      -> (32 - 1) = 31 (0b11111)
+//          (0b11111 << 24)         -> 0x1F000000
+
+// --- Campo SBR (Baud Rate Modulo Divisor) ---
+// Bits 12-0 (13 bit totali)
+#define LPUART_BAUD_SBR_SHIFT   0U  // Posizione del LSB del campo SBR
+#define LPUART_BAUD_SBR_WIDTH   13U // Numero di bit occupati da SBR
+#define LPUART_BAUD_SBR_MASK    (((1U << LPUART_BAUD_SBR_WIDTH) - 1) << LPUART_BAUD_SBR_SHIFT)
+// Esempio: ( (1U << 13) - 1 )      -> (8192 - 1) = 8191 (0x1FFF)
+//          (0x1FFF << 0)           -> 0x00001FFF
 #define TYPE_NXPS32K358_LPUART "nxps32k358-lpuart"
 OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPUARTState, NXPS32K358_LPUART)
 
