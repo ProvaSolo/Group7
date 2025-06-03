@@ -2,13 +2,30 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "hw/char/nxps32k358_lpuart.h"
+#include "hw/qdev-clock.h"
 #include "hw/qdev-properties.h"
 #include "hw/qdev-properties-system.h"
 #include "hw/irq.h"
 #include "trace.h" // tracing system of qemu
+#include "chardev/char-serial.h"
+#include "qapi/error.h"
+
+#ifndef NXP_LPUART_DEBUG
+#define NXP_LPUART_DEBUG 0
+#endif
+
+#define DB_PRINT_L(lvl, fmt, args...)               \
+    do {                                            \
+        if (NXP_LPUART_DEBUG >= lvl) {              \
+            qemu_log("%s: " fmt, __func__, ##args); \
+        }                                           \
+    } while (0)
+
+#define DB_PRINT(fmt, args...) DB_PRINT_L(1, fmt, ##args)
+#define DB_PRINT_READ(fmt, args...) DB_PRINT_L(2, fmt, ##args)
 
 // SECONDA REVISIONE 20 MAY
-static uint32_t nxps32k358_lpuart_calculate_baud_rate(NXPS32K358LpuartState *s) {
+static uint32_t nxps32k358_lpuart_calculate_baud_rate(NXPS32K358LPUARTState *s) {
     uint32_t sbr;
     uint32_t osr_val_in_reg; // Valore del campo OSR letto dal registro
     uint64_t lpuart_module_clk_freq;
@@ -19,7 +36,7 @@ static uint32_t nxps32k358_lpuart_calculate_baud_rate(NXPS32K358LpuartState *s) 
     // 2. Estrai OSR (Over Sampling Ratio)
     osr_val_in_reg = (s->baud_rate_config & LPUART_BAUD_OSR_MASK) >> LPUART_BAUD_OSR_SHIFT;
    
-    lpuart_module_clk_freq = clock_get_hz(s->clk_in);
+    lpuart_module_clk_freq = clock_get_hz(s->clk);
 
     // 3. Calcola e restituisci il baud rate usando la formula diretta (osr + 1)
     // ATTENZIONE: Questo non considera che se osr_val_in_reg < 3, l'oversampling effettivo è 16x.
@@ -29,11 +46,8 @@ static uint32_t nxps32k358_lpuart_calculate_baud_rate(NXPS32K358LpuartState *s) 
     }
 
     return lpuart_module_clk_freq / divisor;
-
-    }
-
-    return lpuart_module_clk_freq / divisor;
-static void nxps32k358_lpuart_update_params(NXPS32K358LPUartState *s) {
+}
+static void nxps32k358_lpuart_update_params(NXPS32K358LPUARTState *s) {
     QEMUSerialSetParams ssp;
     ssp.speed = nxps32k358_lpuart_calculate_baud_rate(s);
     DB_PRINT("Baud rate: %d\n", ssp.speed);
@@ -245,10 +259,12 @@ static void nxps32k358_lpuart_init(Object *obj)
     // Inizializza la MemoryRegion per i registri della LPUART
     // La dimensione (es. 0x1000 o 4KB) deve coprire tutti i registri LPUART
     memory_region_init_io(&s->iomem, obj, &nxps32k358_lpuart_ops, s,
-                          "nxps32k358-lpuart", 0x1000); // Dimensione esempio
+                          "nxps32k358-lpuart", 0x4000); // Dimensione esempio
 
 
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->iomem);
+    s->clk = qdev_init_clock_in(DEVICE(s), "clk", NULL, s, 0);
+
 
 
     // Inizializza il backend per i caratteri
@@ -259,7 +275,10 @@ static void nxps32k358_lpuart_init(Object *obj)
 static void nxps32k358_lpuart_realize(DeviceState *dev, Error **errp)
 {
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(dev);
-
+    if (!clock_has_source(s->clk)) {
+        error_setg(errp, "LPUART clock must be wired up by SoC code");
+        return;
+    }
     // Connetti le funzioni di callback per la ricezione dei caratteri
     // dall'host QEMU al dispositivo emulato.
     qemu_chr_fe_set_handlers(&s->chr, nxps32k358_lpuart_can_receive,

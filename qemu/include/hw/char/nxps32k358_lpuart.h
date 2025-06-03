@@ -4,6 +4,8 @@
 #include "hw/sysbus.h"
 #include "chardev/char-fe.h"
 #include "qom/object.h"
+#include "hw/qdev-clock.h"
+
 
 
 
@@ -58,6 +60,8 @@ struct NXPS32K358LPUARTState {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
+    
+    Clock *clk;
 
     CharBackend chr; // Per l'I/O seriale
     qemu_irq irq;     // Linea di interrupt
