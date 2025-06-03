@@ -17,11 +17,11 @@
 /* stm32f100_soc implementation is derived from stm32f205_soc */
 
 // // The variables represent addresses on our nxp_s32k and need to be changed(is also present the number of pins that we have for usart and spi)
-static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = {0x40328000, 0x4032C000, 0x40330000, 0x40334000, 0x40338000, 0x4033C000, 0x40340000, 0x40344000};
-static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = {0x40358000, 0x4035C000, 0x40360000, 0x40364000};
+static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = {0x40328000, 0x4032C000, 0x40330000, 0x40334000, 0x40338000, 0x4033C000, 0x40340000, 0x40344000, 0x4048C000, 0x40490000,0x40494000,0x40498000,0x4049C000,0x404A0000,0x404A4000,0x404A8000};
+static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = {0x40358000, 0x4035C000, 0x40360000, 0x40364000, 0x404BC000,0x404C0000};
 
-static const int lpuart_irq[NXP_NUM_LPUARTS] = {44, 45, 46, 47, 48, 49, 50};
-static const int lpspi_irq[NXP_NUM_LPSPIS] = {58, 59, 60, 61};
+static const int lpuart_irq[NXP_NUM_LPUARTS] = {141, 142, 143, 144, 145, 146, 147};
+static const int lpspi_irq[NXP_NUM_LPSPIS] = {165, 166, 167, 168, 169, 170};
 
 // -------------------------------------
 
