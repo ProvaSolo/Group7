@@ -301,22 +301,61 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     // FLASH SIZE DEFINED IN .H
 
     // Set up the memory region for our board
-    // ----------------ROM------------
-    memory_region_init_rom(&s->flash, OBJECT(dev_soc), "NXPS32K358.flash",
-                           FLASH_SIZE, &error_fatal);
-    memory_region_init_alias(&s->flash_alias, OBJECT(dev_soc),
-                             "NXPS32K358.flash.alias", &s->flash, 0, FLASH_SIZE);
-
-    memory_region_add_subregion(system_memory, FLASH_BASE_ADDRESS, &s->flash);
-    memory_region_add_subregion(system_memory, 0, &s->flash_alias);
-    // --------------------------------
-
-    //------------ RAM ----------------
-    memory_region_init_ram(&s->sram, NULL, "NXPS32K358.sram", SRAM_SIZE,
+   /*
+     * Init code flash region
+     */
+    memory_region_init_rom(&s->code_flash_0, OBJECT(dev_soc),
+                           "NXPS32K358.code_flash_0", CODE_FLASH_BLOCK_SIZE,
                            &error_fatal);
-    memory_region_add_subregion(system_memory, SRAM_BASE_ADDRESS, &s->sram);
+    memory_region_add_subregion(system_memory, CODE_FLASH_BASE_ADDRESS,
+                                &s->code_flash_0);
+
+    memory_region_init_rom(&s->code_flash_1, OBJECT(dev_soc),
+                           "NXPS32K358.code_flash_1", CODE_FLASH_BLOCK_SIZE,
+                           &error_fatal);
+    memory_region_add_subregion(system_memory,
+                                CODE_FLASH_BASE_ADDRESS + CODE_FLASH_BLOCK_SIZE,
+                                &s->code_flash_1);
+
+    memory_region_init_rom(&s->code_flash_2, OBJECT(dev_soc),
+                           "NXPS32K358.code_flash_2", CODE_FLASH_BLOCK_SIZE,
+                           &error_fatal);
+    memory_region_add_subregion(
+        system_memory, CODE_FLASH_BASE_ADDRESS + 2 * CODE_FLASH_BLOCK_SIZE,
+        &s->code_flash_2);
+
+    memory_region_init_rom(&s->code_flash_3, OBJECT(dev_soc),
+                           "NXPS32K358.code_flash_3", CODE_FLASH_BLOCK_SIZE,
+                           &error_fatal);
+    memory_region_add_subregion(
+        system_memory, CODE_FLASH_BASE_ADDRESS + 3 * CODE_FLASH_BLOCK_SIZE,
+        &s->code_flash_3);
+
+    /* Init data flash region */
+    memory_region_init_rom(&s->data_flash, OBJECT(dev_soc),
+                           "NXPS32K358.data_flash", DATA_FLASH_SIZE,
+                           &error_fatal);
+    memory_region_add_subregion(system_memory, DATA_FLASH_BASE_ADDRESS,
+                                &s->data_flash);
+
+    /* Init SRAM region */
+    memory_region_init_ram(&s->sram_0, OBJECT(dev_soc), "NXPS32K358.sram_0",
+                           SRAM_BLOCK_SIZE, &error_fatal);
+    memory_region_add_subregion(system_memory, SRAM_BASE_ADDRESS, &s->sram_0);
+
+    memory_region_init_ram(&s->sram_1, OBJECT(dev_soc), "NXPS32K358.sram_1",
+                           SRAM_BLOCK_SIZE, &error_fatal);
+    memory_region_add_subregion(
+        system_memory, SRAM_BASE_ADDRESS + SRAM_BLOCK_SIZE, &s->sram_1);
+
+    memory_region_init_ram(&s->sram_2, OBJECT(dev_soc), "NXPS32K358.sram_2",
+                           SRAM_BLOCK_SIZE, &error_fatal);
+    memory_region_add_subregion(
+        system_memory, (SRAM_BASE_ADDRESS + (2 * SRAM_BLOCK_SIZE)), &s->sram_2);
     // ----------------------------------
 
+
+    
     // Set up the CPU -> CONNECTING TO PINS
     armv7m = DEVICE(&s->armv7m);
     qdev_prop_set_uint32(armv7m, "num-irq", 96);
@@ -356,6 +395,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
         sysbus_mmio_map(busdev, 0, lpuart_addr[i]);
         sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, lpuart_irq[i]));
     }
+
     // REALIZING LPSPI
     for (i = 0; i < NXP_NUM_LPSPIS; i++)
     {
