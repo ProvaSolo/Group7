@@ -1543,6 +1543,13 @@ static uint32_t nvic_readl(NVICState *s, uint32_t offset, MemTxAttrs attrs)
         return cpu->isar.mvfr1;
     case 0xf48: /* MVFR2 */
         return cpu->isar.mvfr2;
+    case 0xf90: /* ITCMCR - Instruction TCM Control Register */
+        qemu_log("QEMU_PATCH: nvic_readl - Accesso a ITCMCR (0xf90). Restituisco 0.\n");
+        return 0; // Il tuo startup leggerà 0, poi lo modificherà e lo riscriverà.
+
+    case 0xf94: /* DTCMCR - Data TCM Control Register */
+        qemu_log("QEMU_PATCH: nvic_readl - Accesso a DTCMCR (0xf94). Restituisco 0.\n");
+        return 0; // Il tuo startup leggerà 0, poi lo modificherà e lo riscriverà.
     default:
     bad_offset:
         qemu_log_mask(LOG_GUEST_ERROR, "NVIC: Bad read offset 0x%x\n", offset);
