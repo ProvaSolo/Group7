@@ -265,7 +265,6 @@ static void nxps32k358_soc_initfn(Object *obj)
 static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
 {
 
-    create_unimplemented_devices();
 
     NXPS32K358State *s = NXPS32K358_SOC(dev_soc);
     DeviceState *dev, *armv7m;
@@ -358,7 +357,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     
     // Set up the CPU -> CONNECTING TO PINS
     armv7m = DEVICE(&s->armv7m);
-    qdev_prop_set_uint32(armv7m, "num-irq", 240);
+    qdev_prop_set_uint32(armv7m, "num-irq", 240); // definisce i numeri delle IRQ
     qdev_prop_set_uint8(armv7m, "num-prio-bits", 4);
     qdev_prop_set_string(armv7m, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m7"));
     qdev_prop_set_bit(armv7m, "enable-bitband", true);
@@ -417,6 +416,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
         sysbus_mmio_map(busdev, 0, lpspi_addr[i]);
         sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, lpspi_irq[i]));
     }
+    create_unimplemented_devices();
 }
 
 static void nxps32k358_soc_class_init(ObjectClass *klass, const void *data)
