@@ -112,8 +112,26 @@ Procedura in S32 Design Studio:
         Avvia la build con Project -> Build Project (o Ctrl+B).
         Assicurati che la build venga eseguita per la configurazione Debug_QEMU. Vedrai che ora la cartella di output sarà Debug_QEMU, non più Debug_FLASH.
 #### Anche problema con TCM ed ICM, ho aggiunto il flag di prima nello startup
+anche su questo pezzo di codice che si riferisce all'inizializzione dei registri TCM 
+#ifndef SIM_TYPE_VDK
+/* Enable TCM and Disable RETEN bit */
+LDR r1, =CM7_DTCMCR
+LDR r0, [r1]
+bic r0, r0, #0x4
+orr r0, r0, #0x1
+str r0, [r1]
+/* Enable TCM and Disable RETEN bit */
+LDR r1, =CM7_ITCMCR
+LDR r0, [r1]
+bic r0, r0, #0x4
+orr r0, r0, #0x1
+str r0, [r1]
+#endif
 
-Per evitare una reference di un etichetta anche su DTCM, ho dovuto aggiungere questo flag : RAM_DATA_INIT_ON_ALL_CORES
+Per evitare una reference di un etichetta anche su DTCM, ho dovuto aggiungere questo flag : RAM_DATA_INIT_ON_ALL_CORES.
+
+
+SPOILER: NON MODIFCARE IL LINKER SCRIPT. dISABILITARE SOLO MC_ME ED IMPLEMENTARE DTCM ED ITCM
 ### Debug
 Terminale 1
 ./qemu-system-arm -M nxps32k358evb -nographic -kernel /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS/DEBUG_QEMU/Demo_FreeRTOS.elf -serial none -serial none -serial none -serial mon:stdio -d guest_errors -S -s
@@ -126,3 +144,6 @@ set substitute-path ../ /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTO
 ----> Questo controlla che non ci siano errori con la build tipo startup ec...
 
 target remote localhost:1234
+
+
+### Come vedere gli indirizzi di memoria: arm-none-eabi-objdump -d /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS/DEBUG_QEMU/Demo_FreeRTOS.elf > disassembly.txt
