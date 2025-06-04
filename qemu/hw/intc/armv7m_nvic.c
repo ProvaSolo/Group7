@@ -2149,7 +2149,20 @@ static void nvic_writel(NVICState *s, uint32_t offset, uint32_t value,
     case 0xf70: /* DCCIMVAC */
     case 0xf74: /* DCCISW */
     case 0xf78: /* BPIALL */
+
         /* Cache and branch predictor maintenance: for QEMU these always NOP */
+        break;
+    case 0xf90: /* ITCMCR - Instruction TCM Control Register */
+        qemu_log("QEMU_PATCH: nvic_writel - Scrittura in ITCMCR (0xf90) con valore 0x%x. Intercettata.\n", value);
+        // Se hai aggiunto 's->itcmcr_val' alla tua struct di stato (NVICState o ARMv7MState):
+        // s->itcmcr_val = value; 
+        // Altrimenti, per ora basta intercettare e non fare nulla per evitare l'errore.
+        break; 
+
+    case 0xf94: /* DTCMCR - Data TCM Control Register */
+        qemu_log("QEMU_PATCH: nvic_writel - Scrittura in DTCMCR (0xf94) con valore 0x%x. Intercettata.\n", value);
+        // Se hai aggiunto 's->dtcmcr_val':
+        // s->dtcmcr_val = value;
         break;
     default:
     bad_offset:
