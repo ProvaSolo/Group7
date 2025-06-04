@@ -147,3 +147,6 @@ target remote localhost:1234
 
 
 ### Come vedere gli indirizzi di memoria: arm-none-eabi-objdump -d /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS/DEBUG_QEMU/Demo_FreeRTOS.elf > disassembly.txt
+
+
+MPU enable ha un flag

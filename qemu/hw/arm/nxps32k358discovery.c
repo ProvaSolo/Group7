@@ -50,6 +50,17 @@ static void nxp_s32k358discovery_init(MachineState *machine)
     qdev_connect_clock_in(dev, "sysclk", sysclk);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
 
+    DeviceState *cpu_dev = qdev_new(TYPE_ARM_V7M);
+    // ... potrebbero esserci altre righe che configurano la cpu ...
+    object_property_set_str(OBJECT(cpu_dev), "cpu-type",
+                              ARM_CPU_TYPE_NAME("cortex-m7"), &error_abort);
+
+    // AGGIUNGI QUESTA RIGA QUI
+    object_property_set_int(OBJECT(cpu_dev), "num-mpu-regions", 16, &error_abort);
+
+    // Realizza la CPU (cioè la attiva)
+    qdev_realize_and_unref(cpu_dev, ...);
+    
     armv7m_load_kernel(NXPS32K358_SOC(dev)->armv7m.cpu,
                        machine->kernel_filename,
                        CODE_FLASH_BASE_ADDRESS, CODE_FLASH_BLOCK_SIZE * 4);
