@@ -352,7 +352,15 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     memory_region_add_subregion(
         system_memory, (SRAM_BASE_ADDRESS + (2 * SRAM_BLOCK_SIZE)), &s->sram_2);
     // ----------------------------------
+    /* Init DTCM */
+    memory_region_init_ram(&s->dtcm, OBJECT(dev_soc), "NXPS32K358.dtcm",
+                           DTCM_SIZE, &error_fatal);
+    memory_region_add_subregion(system_memory, DTCM_BASE_ADDRESS, &s->dtcm);
 
+    /* Init ITCM */
+    memory_region_init_ram(&s->itcm, OBJECT(dev_soc), "NXPS32K358.itcm",
+                           ITCM_SIZE, &error_fatal);
+    memory_region_add_subregion(system_memory, ITCM_BASE_ADDRESS, &s->itcm);
 
     
     // Set up the CPU -> CONNECTING TO PINS

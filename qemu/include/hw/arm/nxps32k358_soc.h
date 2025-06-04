@@ -22,6 +22,12 @@ OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358State, NXPS32K358_SOC)
 #define DATA_FLASH_SIZE (128 * 1024)
 #define SRAM_BASE_ADDRESS 0x20400000
 #define SRAM_BLOCK_SIZE (256 * 1024)
+#define SRAM_BLOCK_SIZE (256 * 1024)
+#define DTCM_BASE_ADDRESS 0x20000000
+#define DTCM_SIZE (128 * 1024) + 1
+#define ITCM_BASE_ADDRESS 0x00000000
+#define ITCM_SIZE (64 * 1024)
+
 
 
 
@@ -47,6 +53,8 @@ struct NXPS32K358State {
     MemoryRegion sram_1;
     MemoryRegion sram_2;
 
+    MemoryRegion dtcm;
+    MemoryRegion itcm;
     Clock *sysclk;
     Clock *refclk;
 
