@@ -371,6 +371,8 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     qdev_prop_set_bit(armv7m, "enable-bitband", true);
     qdev_prop_set_uint32(armv7m, "init-svtor", CODE_FLASH_BASE_ADDRESS + 2048);
     qdev_prop_set_uint32(armv7m, "init-nsvtor", CODE_FLASH_BASE_ADDRESS + 2048);
+    qdev_prop_set_uint32(armv7m, "mpu-ns-regions", 16);
+    qdev_prop_set_uint32(armv7m, "mpu-s-regions", 16);
     qdev_connect_clock_in(armv7m, "cpuclk", s->sysclk);
     qdev_connect_clock_in(armv7m, "refclk", s->refclk);
     object_property_set_link(OBJECT(&s->armv7m), "memory",
