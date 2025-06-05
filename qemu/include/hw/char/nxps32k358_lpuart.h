@@ -31,8 +31,9 @@
 // CTRL Register bits
 #define LPUART_CTRL_TE   (1 << 19) // Transmitter Enable
 #define LPUART_CTRL_RE   (1 << 18) // Receiver Enable
-#define LPUART_CTRL_TIE  (1 << 23) // Transmit Interrupt Enable
 #define LPUART_CTRL_RIE  (1 << 21) // Receive Interrupt Enable
+#define LPUART_CTRL_TCIE  (1 << 22) // Receive Interrupt Enabl
+#define LPUART_CTRL_TIE  (1 << 23) // Transmit Interrupt Enable
 
 // BAUD masks
 // --- Campo OSR (Over Sampling Ratio) ---
@@ -52,8 +53,17 @@
 #define LPUART_BAUD_SBR_MASK    (((1U << LPUART_BAUD_SBR_WIDTH) - 1) << LPUART_BAUD_SBR_SHIFT)
 // Esempio: ( (1U << 13) - 1 )      -> (8192 - 1) = 8191 (0x1FFF)
 //          (0x1FFF << 0)           -> 0x00001FFF
+
+// GLOBAL MASK
+#define LPUART_GLOBAL_RST_MASK    (1U << 1)
 #define TYPE_NXPS32K358_LPUART "nxps32k358-lpuart"
 OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPUARTState, NXPS32K358_LPUART)
+
+#define LPUART_BAUD_RESET 0x0F000004
+#define LPUART_STAT_RESET 0x00C00000
+#define LPUART_CONTROL_RESET 0x0000000
+#define LPUART_DATA_RESET 0X00001000
+#define LPUART_GLOBAL_RESET 0x00000002
 
 
 struct NXPS32K358LPUARTState {
@@ -70,6 +80,9 @@ struct NXPS32K358LPUARTState {
     uint32_t lpuart_cr;         // Valore del registro CTRL
     uint32_t lpuart_sr;         // Valore del registro STAT
     uint32_t lpuart_dr;
+    uint32_t lpuart_gb;
+
+
 };
 
 #endif // HW_CHAR_NXPS32K358_LPUART_H

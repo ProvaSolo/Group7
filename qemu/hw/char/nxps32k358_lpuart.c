@@ -57,46 +57,14 @@ static void nxps32k358_lpuart_update_params(NXPS32K358LPUARTState *s) {
 
 static void nxps32k358_lpuart_update_irq(NXPS32K358LPUARTState *s)
 {
-    int irq_pending = 0;
+    uint32_t mask = s->lpuart_sr & s->lpuart_cr;
 
-    // Controlla l'interrupt di ricezione dati
-    if ((s->lpuart_cr & LPUART_CTRL_RIE) && (s->lpuart_sr & LPUART_STAT_RDRF))
-    {
-        irq_pending = 1;
+    if (mask &
+        (LPUART_CTRL_TIE | LPUART_CTRL_TCIE | LPUART_CTRL_RIE)) {
+        qemu_set_irq(s->irq, 1);
+    } else {
+        qemu_set_irq(s->irq, 0);
     }
-
-    // Controlla l'interrupt di trasmettitore pronto
-    if (!irq_pending && (s->lpuart_cr & LPUART_CTRL_TIE) && (s->lpuart_sr & LPUART_STAT_TDRE))
-    {
-        // Spesso TIE e RIE sono mutuamente esclusivi o gestiti con priorità.
-        // Se RDRF è attivo, potresti non voler segnalare TDRE subito,
-        // ma questo dipende dalla logica esatta del chip.
-        // Per semplicità, qui li consideriamo indipendenti se non già irq_pending.
-        // In molti casi, è un OR di tutte le condizioni.
-        irq_pending = 1;
-    }
-    // La riga sopra può essere semplificata se tutti gli interrupt possono essere attivi contemporaneamente:
-    // if ((s->lpuart_cr & LPUART_CTRL_TIE) && (s->lpuart_sr & LPUART_STAT_TDRE)) {
-    //     irq_pending = true;
-    // }
-    // Controlla l'interrupt di trasmissione completata
-    if ((s->lpuart_cr & LPUART_CTRL_TIE) && (s->lpuart_sr & LPUART_STAT_TDRE))
-    {
-        irq_pending = 1;
-    }
-
-    // AGGIUNGI QUI I CONTROLLI PER GLI INTERRUPT DI ERRORE (OR, NF, FE, PF)
-    // Esempio per Overrun (ORIE e OR sono nomi ipotetici, verifica sul manuale S32K3):
-    // #define LPUART_CTRL_ORIE (1 << XYZ) // Bit di enable per interrupt Overrun
-    // #define LPUART_STAT_OR   (1 << ABC) // Flag di stato Overrun
-    // if ((s->lpuart_cr & LPUART_CTRL_ORIE) && (s->lpuart_sr & LPUART_STAT_OR)) {
-    //     irq_pending = true;
-    // }
-
-    // AGGIUNGI QUI I CONTROLLI PER ALTRI INTERRUPT SPECIFICI (IDLE, LIN Break, ecc.)
-
-    // Infine, imposta lo stato della linea IRQ
-    qemu_set_irq(s->irq, irq_pending);
 }
 
 // Funzione chiamata quando QEMU può inviare un carattere al guest
@@ -104,10 +72,10 @@ static int nxps32k358_lpuart_can_receive(void *opaque)
 {
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(opaque);
 
-    // Controlla se c'è spazio nella FIFO di ricezione o se il ricevitore è abilitato
-    if (!(s->lpuart_cr & LPUART_CTRL_RE))  return 1; // Non può ricevere
-    
-    return 0; // Può ricevere
+    if (s->lpuart_sr & LPUART_STAT_RDRF) {
+        return 0; // Non può ricevere
+    }
+    return 1; // Può ricevere
 }
 
 // Funzione chiamata quando QEMU ha un carattere da inviare al guest
@@ -118,6 +86,8 @@ static void nxps32k358_lpuart_receive(void *opaque, const uint8_t *buf, int size
     // return when the size is 0(so no data to be sent) or when the RE is not enabled
     if (!(s->lpuart_cr & LPUART_CTRL_RE) || size == 0)
     {
+        DB_PRINT("Dropping the chars, read is disabled\n");
+
         return;
     }
     s->lpuart_dr = *buf;
@@ -125,16 +95,20 @@ static void nxps32k358_lpuart_receive(void *opaque, const uint8_t *buf, int size
 
     // at the end need to be done to send the Interrupt :)
     nxps32k358_lpuart_update_irq(s);
+    DB_PRINT("Receiving: %c\n", s->lpuart_dr);
+
 }
 
 static void nxps32k358_lpuart_reset(DeviceState *dev)
 {
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(dev);
 
-    s->lpuart_cr = 0x00000000;        // Valore di reset dal manuale
-    s->lpuart_sr = 0x00C00000;        // TDRE è solitamente 1 al reset, TBD
-                                      // Altri flag (es. TC) potrebbero essere 1. Verifica!
-    s->baud_rate_config = 0x0F000004; // Valore di reset dal manuale (esempio)
+    s->lpuart_cr = LPUART_CONTROL_RESET;        // Valore di reset dal manuale
+    s->lpuart_sr = LPUART_STAT_RESET;        // TDRE è solitamente 1 al reset, TBD
+    s->lpuart_dr = LPUART_DATA_RESET;
+    s->lpuart_gb = LPUART_GLOBAL_RESET;
+
+    s->baud_rate_config = LPUART_BAUD_RESET; // Valore di reset dal manuale (esempio)
 
     nxps32k358_lpuart_update_irq(s);
 }
@@ -145,46 +119,36 @@ static void nxps32k358_lpuart_reset(DeviceState *dev)
 static uint64_t nxps32k358_lpuart_read(void *opaque, hwaddr offset, unsigned size)
 {
     NXPS32K358LPUARTState *s = NXPS32K358_LPUART(opaque);
-    uint64_t ret = 0;
+    DB_PRINT_READ("Read 0x%" HWADDR_PRIx "\n", offset);
 
     // qemu_log_mask(LOG_GUEST_ERROR, "LPUART read offset=0x%02x size=%u\n", (int)offset, size);
 
     switch (offset)
     {
+    case LPUART_GLOBAL:
+        return s->lpuart_gb;
     case LPUART_BAUD:
-        ret = s->baud_rate_config;
-        break;
+        return s->baud_rate_config;
     case LPUART_STAT:
-        ret = s->lpuart_sr;
-        // Alcuni bit di stato (come RDRF) potrebbero essere read-to-clear o auto-clearing
-        // dopo la lettura del registro DATA. Implementa questa logica se necessario.
-        break;
+        return s->lpuart_sr;
     case LPUART_CTRL:
-        ret = s->lpuart_cr;
-        break;
+        return s->lpuart_cr;
+        
     case LPUART_DATA:
-        ret = s->lpuart_dr & 0x3FF;
+        DB_PRINT_READ("Value: 0x%" PRIx32 ", %c\n", s->lpuart_dr,
+                          (char)s->lpuart_dr);
+
         s->lpuart_sr &= ~LPUART_STAT_RDRF;
         qemu_chr_fe_accept_input(&s->chr);
         // La lettura di DATA spesso cancella RDRF e l'interrupt associato
         nxps32k358_lpuart_update_irq(s);
-        break;
-    // Aggiungi qui i case per altri registri leggibili (VERID, PARAM, FIFO, WATER, ecc.)
-    // basandoti sul S32K3XXRM.pdf
-    case LPUART_VERID:
-        // ret = ;
-        break; // Valore esempio, metti quello reale
-    case LPUART_PARAM:
-        // ret = ;
-        break; // Valore esempio
-    case LPUART_FIFO:
-        break;
+        return s->lpuart_dr;
     default:
-        qemu_log_mask(LOG_UNIMP, "NXP S32K3 LPUART: Unimplemented read offset 0x%" HWADDR_PRIx "\n", offset);
+        qemu_log_mask(LOG_GUEST_ERROR, "NXP S32K3 LPUART: Unimplemented read offset 0x%" HWADDR_PRIx "\n", offset);
         return 0;
     }
 
-    return ret;
+    return 0;
 }
 
 static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64, unsigned size)
@@ -196,6 +160,12 @@ static void nxps32k358_lpuart_write(void *opaque, hwaddr offset, uint64_t val64,
 
     switch (offset)
     {
+    case LPUART_GLOBAL:
+            s->lpuart_gb = value;
+            if (value & LPUART_GLOBAL_RST_MASK) {
+                nxps32k358_lpuart_reset(DEVICE(s));
+            }
+            return;
     case LPUART_BAUD:
         s->baud_rate_config = value;
         nxps32k358_lpuart_update_params(s);
