@@ -12,7 +12,7 @@ sudo apt upgrade
 
 Verificare anche il comando ./configure, forse piu completo
 ```bash
-./configure --target-list=arm-softmmu --enable-debug
+CFLAGS="-g -O0 -DNXP_LPUART_DEBUG=2" CXXFLAGS="-g -O0 -DNXP_LPUART_DEBUG=2" ./configure --target-list=arm-softmmu --enable-debug
 make -j$(nproc)
 ./qemu-system-arm -M help
 ```
@@ -142,11 +142,14 @@ directory /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS
 set substitute-path ../ /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS/
 
 ----> Questo controlla che non ci siano errori con la build tipo startup ec...
-
+Lpuart_Uart_Ip_GetStatusFlag
 target remote localhost:1234
 
 
 ### Come vedere gli indirizzi di memoria: arm-none-eabi-objdump -d /mnt/c/Users/vitoc/Desktop/workspace_group7/Demo_FreeRTOS/DEBUG_QEMU/Demo_FreeRTOS.elf > disassembly.txt
 
 
-MPU enable ha un flag
+MPU enable ha un flag in s32 design sutdio
+
+
+aggiunta di due properties on qemu soc
