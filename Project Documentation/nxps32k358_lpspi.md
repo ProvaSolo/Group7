@@ -206,7 +206,7 @@ The driver uses a macro `DB_PRINT_L` to conditionally emit debug logs. This macr
 
 3. **IRQ Initialization**:
 
-    - Initializes the IRQ line with `sysbus_init_irq()`, enabling the device to signal interrupts to the virtual CPU.
+    - Initializes the IRQ line (Interrupt request line) with `sysbus_init_irq()`, enabling the device to signal interrupts to the virtual CPU.
 
 4. **Chip Select (CS) Line Configuration**:
 

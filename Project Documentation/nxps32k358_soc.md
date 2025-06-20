@@ -1,282 +1,207 @@
-# Documentation: NXP S32K358 SoC QEMU Model
+# NXP S32K358 SoC Documentation
 
 ## Overview
 
-The `nxps32k358_soc` module provides a QEMU System-on-Chip (SoC) model for the NXP S32K358 microcontroller. This model implements a Cortex-M7 CPU core with various peripherals including UARTs (LPUART), Serial Peripheral Interfaces (LPSPI), clock management, memory regions, and system configuration blocks.
+## Purpose of the SoC Files (`nxps32k358_soc.h` / `nxps32k358_soc.c`)
+
+The purpose of the SoC files is to define and implement the **NXP S32K358 System on Chip (SoC) model** for QEMU. These files describe the overall microcontroller, integrating the ARM Cortex-M7 CPU, memory regions (Flash, SRAM, TCM), and all on-chip peripherals (such as LPUARTs and LPSPIs) into a single, unified device.
+
+This SoC model serves several key purposes:
+
+-   Provide a complete hardware model of the S32K358 microcontroller, allowing QEMU to emulate the real chip's behavior.
+-   Aggregate and connect all internal components (CPU, memory, peripherals) so that software running in QEMU interacts with them as it would on real hardware.
+-   Set up the memory map, clock tree, and interrupt routing for the entire chip.
+-   Serve as the foundation for board-level emulation, enabling the simulation of real-world embedded systems using the S32K358.
+-   Allow QEMU to recognize, instantiate, and manage the SoC as a device, making it possible to run and debug firmware or operating systems designed for the S32K358 microcontroller.
 
 ## Header File: `nxps32k358_soc.h`
 
-The header file defines the structure and configuration macros for the S32K358 SoC:
+### Key Definitions
 
-```c
-#ifndef HW_ARM_NXPS32K358_SOC_H
-#define HW_ARM_NXPS32K358_SOC_H
+-   **`TYPE_NXPS32K358_SOC`**: The type name for the SoC device, defined as `"nxps32k358-soc"`.
+-   **`NXP_NUM_LPUARTS`**: The number of LPUART peripherals (16).
+-   **`NXP_NUM_LPSPIS`**: The number of LPSPI peripherals (6).
 
-#include "hw/char/nxps32k358_lpuart.h"
-#include "hw/ssi/nxps32k358_lpspi.h"
-#include "hw/arm/armv7m.h"
-#include "qom/object.h"
-#include "hw/misc/nxps32k358_syscfg.h"
+### Memory Region Base Addresses and Sizes
 
-#define TYPE_NXPS32K358_SOC "nxps32k358-soc"
-OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358State, NXPS32K358_SOC)
+-   **`CODE_FLASH_BASE_ADDRESS`**: Base address for the code flash memory (0x00400000).
+-   **`CODE_FLASH_BLOCK_SIZE`**: Size of each code flash block (2 MB).
+-   **`DATA_FLASH_BASE_ADDRESS`**: Base address for the data flash memory (0x10000000).
+-   **`DATA_FLASH_SIZE`**: Size of the data flash region (128 KB).
+-   **`SRAM_BASE_ADDRESS`**: Base address for the SRAM region (0x20400000).
+-   **`SRAM_BLOCK_SIZE`**: Size of each SRAM block (256 KB).
+-   **`DTCM_BASE_ADDRESS`**: Base address for the Data Tightly Coupled Memory (DTCM) (0x20000000).
+-   **`DTCM_SIZE`**: Size of the DTCM region (128 KB + 1 byte, note: the +1 is unusual and might be an error).
+-   **`ITCM_BASE_ADDRESS`**: Base address for the Instruction Tightly Coupled Memory (ITCM) (0x00000000).
+-   **`ITCM_SIZE`**: Size of the ITCM region (64 KB).
 
-#define NXP_NUM_LPUARTS 8
-#define NXP_NUM_LPSPIS 4
+### Key Structures
 
-#define FLASH_BASE_ADDRESS 0x08000000
-#define FLASH_SIZE (1024 * 1024) // 1MB Flash memory
-#define SRAM_BASE_ADDRESS 0x20000000
-#define SRAM_SIZE (128 * 1024) // 128KB RAM memory
+-   **`NXPS32K358State`**: Represents the state of the SoC device, including:
+    -   **Parent Object**: `SysBusDevice parent_obj`.
+    -   **ARMv7M State**: `ARMv7MState armv7m` for the Cortex-M7 core.
+    -   **SYSCFG**: `NXPS32K358SYSCFGState syscfg` for the system configuration controller.
+    -   **LPUARTs**: Array of `NXPS32K358LPUARTState lpuarts[NXP_NUM_LPUARTS]`.
+    -   **LPSPIs**: Array of `NXPS32K358LPSPIState lpspis[NXP_NUM_LPSPIS]`.
+    -   **ADC IRQs**: `OrIRQState *adc_irqs` enables interrupt handling for the ADC (Analog to Digital Converter) peripherals.
+    -   **Memory Regions**:
+        -   `code_flash_0`, `code_flash_1`, `code_flash_2`, `code_flash_3`: Code flash blocks.
+        -   `data_flash`: Data flash region.
+        -   `sram_0`, `sram_1`, `sram_2`: SRAM blocks.
+        -   `dtcm`: DTCM region.
+        -   `itcm`: ITCM region.
+    -   **Clocks**:
+        -   `sysclk`: Main system clock.
+        -   `refclk`: Reference clock (derived from `sysclk` with a divisor of 8).
+        -   `aips_plat_clk`: AIPS platform clock (80 MHz).
+        -   `aips_slow_clk`: AIPS slow clock (40 MHz).
 
-struct NXPS32K358State {
-    SysBusDevice parent_obj;
-
-    ARMv7MState armv7m;       // Cortex-M7 CPU model
-
-    NXPS32K358SYSCFGState syscfg; // System configuration controller
-
-    NXPS32K358LPUARTState lpuarts[NXP_NUM_LPUARTS]; // LPUART peripherals
-    NXPS32K358LPSPIState lpspis[NXP_NUM_LPSPIS];    // LPSPI peripherals
-
-    OrIRQState *adc_irqs;     // ADC interrupt controller
-
-    MemoryRegion sram;        // SRAM memory region
-    MemoryRegion flash;       // Flash memory region
-    MemoryRegion flash_alias; // Flash alias (for booting)
-
-    Clock *sysclk;            // System clock
-    Clock *refclk;            // Reference clock
-
-    Clock *aips_plat_clk;     // AIPS platform clock
-    Clock *aips_slow_clk;     // AIPS slow clock
-};
-
-#endif
-```
-
-### Key Definitions in the Header
-
-1. **Constants and Macros**:
-
-    - `NXP_NUM_LPUARTS`: Number of Low-Power Universal Asynchronous Receiver/Transmitters (8)
-    - `NXP_NUM_LPSPIS`: Number of Low-Power Serial Peripheral Interfaces (4)
-    - Memory addresses:
-        - `FLASH_BASE_ADDRESS`: Base address of the Flash memory (0x08000000)
-        - `FLASH_SIZE`: Size of the Flash memory (1MB)
-        - `SRAM_BASE_ADDRESS`: Base address of the SRAM (0x20000000)
-        - `SRAM_SIZE`: Size of the SRAM (128KB)
-
-2. **Structure Definition** (`NXPS32K358State`):
-    - `parent_obj`: Base structure for system bus devices
-    - `armv7m`: Cortex-M7 CPU model
-    - `syscfg`: System configuration controller
-    - Arrays of peripherals:
-        - `lpuarts`: Array of LPUART controllers
-        - `lpspis`: Array of LPSPI controllers
-    - Clock pointers:
-        - `sysclk`, `refclk`: Primary system clocks
-        - `aips_plat_clk`, `aips_slow_clk`: Additional peripheral clocks
-    - Memory regions:
-        - `sram`, `flash`: Main memory regions
-        - `flash_alias`: Memory alias for booting
+---
 
 ## Source File: `nxps32k358_soc.c`
 
-The implementation file contains the SoC initialization and configuration logic:
+### Key Functions
 
-```c
-#include "qemu/osdep.h"
-#include "qapi/error.h"
-#include "qemu/module.h"
-#include "hw/arm/boot.h"
-#include "system/address-spaces.h"
-#include "hw/arm/nxps32k358_soc.h"
-#include "hw/qdev-properties.h"
-// ... [other includes] ...
+#### `create_unimplemented_devices()`
 
-static const uint32_t lpuart_addr[NXP_NUM_LPUARTS] = { ... };
-static const uint32_t lpspi_addr[NXP_NUM_LPSPIS] = { ... };
-static const int lpuart_irq[NXP_NUM_LPUARTS] = { ... };
-static const int lpspi_irq[NXP_NUM_LPSPIS] = { ... };
+-   **Purpose**: Creates unimplemented devices for a large set of peripherals that are present in the actual hardware but not yet implemented in QEMU. This ensures that accesses to these regions do not cause bus errors and can be logged for debugging. It maps the memory regions of these peripherals to a "unimplemented" device, allowing the system to continue functioning without crashing.
 
-// ... [unimplemented devices creation] ...
+-   **Functionality**:
 
-static void nxps32k358_soc_initfn(Object *obj) {
-    // Initialization code
-}
+    -   Calls `create_unimplemented_device()` for each peripheral, specifying:
+        -   A name string (for identification in logs).
+        -   The base address of the peripheral.
+        -   The size of the memory region (typically 0x4000, 16KB, but some are 64KB).
 
-static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp) {
-    // Realization code
-}
+-   **Note**: The function covers a wide range of peripherals including timers, analog to digital converters, communication devices, DMA, memory/bus, security (erm0, erm1,fccu_m, mc_rgm, stcu, selftest_gpr), and other type of devices.
 
-static void nxps32k358_soc_class_init(ObjectClass *klass, const void *data) {
-    // Class initialization
-}
+#### `nxps32k358_soc_initfn()`
 
-static const TypeInfo nxps32k358_soc_info = {
-    .name = TYPE_NXPS32K358_SOC,
-    .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(NXPS32K358State),
-    .instance_init = nxps32k358_soc_initfn,
-    .class_init = nxps32k358_soc_class_init,
-};
+-   **Purpose**: Initializes the SoC device and its child objects during instance creation.
 
-void nxps32k358_soc_types(void) {
-    type_register_static(&nxps32k358_soc_info);
-}
+-   **Functionality**:
+    -   Initializes the ARMv7-M object (`armv7m`).
+    -   Initializes the system configuration controller (`syscfg`).
+    -   Initializes the input clocks:
+        -   `sysclk`: Main system clock.
+        -   `refclk`: Reference clock (derived from `sysclk`).
+        -   `aips_plat_clk`: AIPS platform clock.
+        -   `aips_slow_clk`: AIPS slow clock.
+    -   Initializes the LPUART and LPSPI child objects in arrays.
 
-type_init(nxps32k358_soc_types)
-```
+#### `nxps32k358_soc_realize()`
 
-### Key Components of the Implementation
+-   **Purpose**: Realizes the SoC device, including setting up memory regions, clocks, and realizing child devices. This function is called when the device is instantiated and performs the main setup, after the initialization the purpose of the realization is to connect all components together and prepare the SoC in the QEMU environment so that it can be used for emulation.
 
-1. **Initialization Function** (`nxps32k358_soc_initfn`):
+-   **Functionality**:
+    -   **Clock Setup**:
+        -   Checks that `sysclk` is connected (by board code) and `refclk` is not externally connected.
+        -   Sets the `refclk` to run at `sysclk` frequency divided by 8.
+        -   Sets the frequencies for `aips_plat_clk` (80 MHz) and `aips_slow_clk` (40 MHz). Clocks for Advanced IP bus Pheripheral Subsystems, bus used in NXP microcontrollers.
+    -   **Memory Region Setup**:
+        -   Initializes and maps the code flash blocks (4 blocks of 2 MB each at base address 0x00400000).
+        -   Initializes and maps the data flash region (128 KB at 0x10000000).
+        -   Initializes and maps the SRAM blocks (3 blocks of 256 KB at 0x20400000).
+        -   Initializes and maps the DTCM (128 KB + 1 at 0x20000000) and ITCM (64 KB at 0x00000000).
+-                   -   Sets the memory link to the system memory.
+                    -   Realizes the ARMv7-M object.
 
-    - Initializes the ARMv7M CPU core (Cortex-M7)
-    - Sets up memory regions for Flash and SRAM
-    - Initializes system configuration controllers
-    - Configures CPU and clock settings
+    -   **System Configuration Controller (SYSCFG)**:
 
-2. **Realization Function** (`nxps32k358_soc_realize`):
+        -   Connects the SYSCFG's clock input to the main system clock (`sysclk`).
+        -   Realizes (initializes and activates) the SYSCFG device so it becomes part of the emulated hardware.
+        -   Maps the SYSCFG's memory-mapped I/O region to address `0x40013800` in the system's memory space.
 
-    - Creates unimplemented devices for placeholder peripherals
-    - Configures clocks (refclk, sysclk, AIPS clocks)
-    - Initializes peripheral controllers (LPUARTs, LPSPIs)
-    - Maps device registers to specific memory addresses
-    - Connects interrupts for peripherals
+    -   **SYSCFG Setup**:
+        -   Connects the `sysclk` to the SYSCFG device.
+        -   Realizes the SYSCFG and maps it at address 0x40013800.
+    -   **LPUART Setup**:
+        -   For each LPUART:
+            -   Sets the character device (for serial output).
+            -   Connects the appropriate clock (`aips_plat_clk` for LPUARTs 0,1,8 and `aips_slow_clk` for the others).
+            -   Realizes the device and maps it to its base address (from `lpuart_addr` array).
+            -   Connects the IRQ (from `lpuart_irq` array) to the ARMv7-M NVIC.
+    -   **LPSPI Setup**:
+        -   For each LPSPI:
+            -   Realizes the device and maps it to its base address (from `lpspi_addr` array).
+            -   Connects the IRQ (from `lpspi_irq` array) to the ARMv7-M NVIC.
+    -   **Unimplemented Devices**:
+        -   Calls `create_unimplemented_devices()` to cover the rest of the peripherals.
 
-3. **Clock Configuration**:
+#### `nxps32k358_soc_class_init()`
 
-    - The reference clock (refclk) is set to the system clock divided by 8
-    - Various peripheral clocks (aips_plat_clk, aips_slow_clk) are configured with specific frequencies
+-   **Purpose**: Initializes the class for the SoC device.
 
-4. **Memory Region Setup**:
+-   **Functionality**:
+    -   Sets the `realize` method to `nxps32k358_soc_realize`.
 
-    - Flash memory (1MB) is mapped to 0x08000000
-    - SRAM memory (128KB) is mapped to 0x20000000
-    - Flash alias is created for booting purposes
+#### `nxps32k358_soc_types()`
 
-5. **Peripheral Initialization**:
-    - LPUART (serial communication) controllers
-    - LPSPI (I2S/SPI) controllers
-    - System configuration controller
+-   **Purpose**: Registers the SoC device type with QEMU.
 
-### Peripheral Details
+-   **Functionality**:
+    -   Calls `type_register_static()` with the `nxps32k358_soc_info` structure.
 
-**LPUART (Low-Power Universal Asynchronous Receiver/Transmitter)**:
+### Key Constants
 
--   Number: 8 instances
--   Base addresses: Defined in `lpuart_addr` array
--   Interrupts: Defined in `lpuart_irq` array
--   Features:
-    -   Asynchronous serial communication
-    -   Low-power modes
-    -   Configurable baud rates
-    -   FIFO buffers
+#### Peripheral Base Addresses and IRQs
 
-**LPSPI (Low-Power Serial Peripheral Interface)**:
+-   **LPUART Base Addresses**: Array `lpuart_addr` with 16 base addresses.
+-   **LPUART IRQs**: Array `lpuart_irq` with 7 IRQ numbers (note: the array has 7 entries but there are 16 LPUARTs; this might be an error).
+-   **LPSPI Base Addresses**: Array `lpspi_addr` with 6 base addresses.
+-   **LPSPI IRQs**: Array `lpspi_irq` with 6 IRQ numbers.
 
--   Number: 4 instances
--   Base addresses: Defined in `lpspi_addr` array
--   Interrupts: Defined in `lpspi_irq` array
--   Features:
-    -   Synchronous serial communication
-    -   Master/slave modes
-    -   Configurable data formats
-    -   Low-power operation
+### Memory Region Setup
 
-### Usage and Integration
+The SoC sets up the following memory regions:
 
-To use this SoC model in QEMU:
+| Region     | Base Address | Size (per block) | Blocks | Total Size |
+| ---------- | ------------ | ---------------- | ------ | ---------- |
+| Code Flash | 0x00400000   | 2 MB             | 4      | 8 MB       |
+| Data Flash | 0x10000000   | 128 KB           | 1      | 128 KB     |
+| SRAM       | 0x20400000   | 256 KB           | 3      | 768 KB     |
+| DTCM       | 0x20000000   | 128 KB + 1       | 1      | 128 KB + 1 |
+| ITCM       | 0x00000000   | 64 KB            | 1      | 64 KB      |
 
-1. **Register the Type**:
+### Clock Setup
 
-    ```c
-    #include "nxps32k358_soc.h"
-    type_init(nxps32k358_soc_types);
-    ```
+-   **`sysclk`**: Must be provided by the board. This is the main CPU clock.
+-   **`refclk`**: Derived from `sysclk` by dividing by 8. Used internally by the CPU and peripherals.
+-   **`aips_plat_clk`**: Set to 80 MHz. Used by some peripherals (LPUARTs 0,1,8).
+-   **`aips_slow_clk`**: Set to 40 MHz. Used by other peripherals (LPUARTs 2-7,9-15).
 
-2. **Create the SoC Instance**:
+---
 
-    ```c
-    DeviceState *soc = qdev_new("nxps32k358-soc");
-    ```
+## Key Features
 
-3. **Configure Clocks**:
+### Memory Map
 
-    ```c
-    // Set system clock frequency
-    qdev_prop_set_uint32(OBJECT(soc), "sysclk-frequency", 100000000);
+The SoC provides a comprehensive memory map including:
 
-    // Set reference clock source
-    qdev_prop_set_string(OBJECT(soc), "refclk-source", "external_xtal");
-    ```
+-   **Code Flash**: 8 MB in 4 blocks, starting at 0x00400000.
+-   **Data Flash**: 128 KB at 0x10000000.
+-   **SRAM**: 768 KB in 3 blocks, starting at 0x20400000.
+-   **DTCM**: 128 KB at 0x20000000 (plus 1 byte, which might be a mistake).
+-   **ITCM**: 64 KB at 0x00000000.
 
-4. **Connect Peripherals**:
+### Peripheral Integration
 
-    ```c
-    // Connect UART devices
-    for (int i = 0; i < NXP_NUM_LPUARTS; i++) {
-        qdev_connect_gpio_out(DEVICE(soc), lpuart_irq[i], ...);
-    }
-    ```
+-   **ARM Cortex-M7**: The main CPU core.
+-   **SYSCFG**: System configuration controller at 0x40013800.
+-   **16 LPUARTs**: Mapped at addresses from the `lpuart_addr` array, with IRQs from `lpuart_irq` (note: the IRQ array only has 7 entries, so this might be incomplete).
+-   **6 LPSPIs**: Mapped at addresses from the `lpspi_addr` array, with IRQs from `lpspi_irq`.
 
-5. **Add to System Bus**:
-    ```c
-    SysBusDevice *busdev = SYS_BUS_DEVICE(soc);
-    sysbus_realize(busdev, errp);
-    sysbus_mmio_map(busdev, 0, ...);
-    ```
+### Unimplemented Peripherals
 
-### Clock Configuration Details
+A large set of peripherals are marked as unimplemented, ensuring that accesses to their memory regions do not cause bus errors. These include:
 
-The SoC implements a hierarchical clocking structure:
+-   Timers (PIT, STM, SWT)
+-   Communication interfaces (FlexCAN, FlexIO, SAI, EMAC, GMAC)
+-   Analog (ADC)
+-   Safety and security (ERM, BCU, WKPU)
+-   Clock and reset (CMU, MC_RGM, PLL)
+-   And many more.
 
-1. **Reference Clock (refclk)**:
+### Clock Management
 
-    - Base clock for the system
-    - Typically derived from an external crystal
-    - Divided by 8 to generate system clock (sysclk)
-
-2. **System Clock (sysclk)**:
-    - Primary clock for the CPU and most peripherals
-    - Default frequency: 100 MHz (can be configured)
-3. **AIPS Clocks**:
-    - `aips_plat_clk`: 80 MHz (for high-performance peripherals)
-    - `aips_slow_clk`: 40 MHz (for low-power peripherals)
-
-### Memory Mapping
-
-The S32K358 SoC implements a standard memory map:
-
-```
-+---------------------+-----------------------+--------------------+--------------------+
-| Memory Type         | Base Address          | Size               | Description        |
-+---------------------+-----------------------+--------------------+--------------------+
-| Flash Memory        | 0x08000000            | 1,048,576 B (1MB)  | Program memory     |
-| System Memory Alias | 0x00000000            | 1,048,576 B (1MB)  | Boot memory alias  |
-| SRAM                | 0x20000000            | 131,072 B (128KB)  | Data memory        |
-+---------------------+-----------------------+--------------------+--------------------+
-```
-
-### Register Interface
-
-Each peripheral implements a set of configuration and status registers through memory-mapped I/O:
-
-```c
-// Example: LPUART register access
-void lpuart_set_baudrate(uint32_t base, uint32_t baudrate) {
-    uint32_t sysclk = get_current_clock_frequency(SYSCLK);
-    uint32_t divider = sysclk / (16 * baudrate);
-    // Write to register at base + 0x2C
-}
-
-uint32_t lpuart_get_status(uint32_t base) {
-    return readl(base + LPUART_SR_OFFSET);
-}
-```
-
-### Conclusion
-
-The `nxps32k358_soc` module provides a comprehensive and flexible model of the NXP S32K358 SoC for QEMU-based development and simulation. This model includes support for multiple peripherals, configurable clocking, and appropriate memory mapping, making it suitable for embedded development, firmware testing, and system-level simulation.
+The SoC has a flexible clock setup with multiple derived clocks for different peripheral groups.
