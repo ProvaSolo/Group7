@@ -1,26 +1,5 @@
 /*
- * ST STM32VLDISCOVERY machine
- *
- * Copyright (c) 2021 Alexandre Iooss <erdnaxe@crans.org>
- * Copyright (c) 2014 Alistair Francis <alistair@alistair23.me>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * NXP S32K358 Discovery board
  */
 
 #include "qemu/osdep.h"
@@ -32,16 +11,13 @@
 #include "hw/arm/nxps32k358_soc.h"
 #include "hw/arm/boot.h"
 
-/* nxp_s32k358discovery implementation is derived from stm32vldiscovery */
-
 /* Main SYSCLK frequency in Hz (24MHz) */
 #define SYSCLK_FRQ 24000000ULL // unsigned long long
 
 static void nxp_s32k358discovery_init(MachineState *machine)
 {
     DeviceState *dev;
-    Clock *sysclk;
-    /* This clock doesn't need migration because it is fixed-frequency */
+    Clock *sysclk; /* This clock doesn't need migration because it is fixed-frequency */
     sysclk = clock_new(OBJECT(machine), "SYSCLK");
     clock_set_hz(sysclk, SYSCLK_FRQ);
 
@@ -50,7 +26,6 @@ static void nxp_s32k358discovery_init(MachineState *machine)
     qdev_connect_clock_in(dev, "sysclk", sysclk);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
 
-    
     armv7m_load_kernel(NXPS32K358_SOC(dev)->armv7m.cpu,
                        machine->kernel_filename,
                        CODE_FLASH_BASE_ADDRESS, CODE_FLASH_BLOCK_SIZE * 4);
