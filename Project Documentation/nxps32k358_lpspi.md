@@ -4,8 +4,6 @@
 
 The NXP S32K358 LPSPI (Low Power Serial Peripheral Interface) is a QEMU device model that emulates the SPI peripheral of the S32K358 microcontroller. It supports full-duplex SPI communication, programmable FIFO buffers, multiple chip select lines, and interrupt-driven operation.
 
-This document provides a detailed explanation of the implementation in the `.c` and `.h` files.
-
 ---
 
 ## Header File: `nxps32k358_lpspi.h`

@@ -2,9 +2,7 @@
 
 ## Overview
 
-## Purpose of the SoC Files (`nxps32k358_soc.h` / `nxps32k358_soc.c`)
-
-The purpose of the SoC files is to define and implement the **NXP S32K358 System on Chip (SoC) model** for QEMU. These files describe the overall microcontroller, integrating the ARM Cortex-M7 CPU, memory regions (Flash, SRAM, TCM), and all on-chip peripherals (such as LPUARTs and LPSPIs) into a single, unified device.
+The SoC files defines and implement the **NXP S32K358 System on Chip (SoC) model** for QEMU. These files describe the overall microcontroller, integrating the ARM Cortex-M7 CPU, memory regions (Flash, SRAM, TCM), and all on-chip peripherals (such as LPUARTs and LPSPIs) into a single, unified device.
 
 This SoC model serves several key purposes:
 
@@ -103,8 +101,8 @@ This SoC model serves several key purposes:
         -   Initializes and maps the data flash region (128 KB at 0x10000000).
         -   Initializes and maps the SRAM blocks (3 blocks of 256 KB at 0x20400000).
         -   Initializes and maps the DTCM (128 KB + 1 at 0x20000000) and ITCM (64 KB at 0x00000000).
--                   -   Sets the memory link to the system memory.
-                    -   Realizes the ARMv7-M object.
+-                       -   Sets the memory link to the system memory.
+                        -   Realizes the ARMv7-M object.
 
     -   **System Configuration Controller (SYSCFG)**:
 
