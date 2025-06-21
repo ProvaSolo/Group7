@@ -23,7 +23,6 @@
 #define LPUART_FIFO   0x28  // FIFO Register (Esempio)
 #define LPUART_WATER  0x2C  // Watermark Register (Esempio)
 
-// Bit dei registri (ESEMPI - verifica sul manuale!)
 // STAT Register bits
 #define LPUART_STAT_TDRE (1 << 23) // Transmit Data Register Empty
 #define LPUART_STAT_RDRF (1 << 21) // Receive Data Register Full
