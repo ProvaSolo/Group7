@@ -40,7 +40,10 @@ static void lpspi_update_status(NXPS32K358LPSPIState *s)
 
     s->lpspi_fsr = (rx_word_count << 16) | (tx_word_count << 0);
 
-    if (fifo8_num_free(&s->tx_fifo) >= 4)
+    uint8_t tx_watermark = (s->lpspi_fcr & FCR_TXWATER_MASK) >> FCR_TXWATER_SHIFT;
+    uint8_t rx_watermark = (s->lpspi_fcr & FCR_RXWATER_MASK) >> FCR_RXWATER_SHIFT;
+
+    if (tx_word_count <= tx_watermark)
     {
         s->lpspi_sr |= LPSPI_SR_TDF;
     }
@@ -49,7 +52,7 @@ static void lpspi_update_status(NXPS32K358LPSPIState *s)
         s->lpspi_sr &= ~LPSPI_SR_TDF;
     }
 
-    if (fifo8_num_used(&s->rx_fifo) >= 4)
+    if (rx_word_count > rx_watermark)
     {
         s->lpspi_sr |= LPSPI_SR_RDF;
     }
@@ -78,6 +81,30 @@ static void lpspi_update_status(NXPS32K358LPSPIState *s)
  */
 static void lpspi_update_irq(NXPS32K358LPSPIState *s)
 {
+    uint8_t tx_word_count = fifo8_num_used(&s->tx_fifo) / 4;
+    uint8_t rx_word_count = fifo8_num_used(&s->rx_fifo) / 4;
+
+    uint8_t tx_watermark = (s->lpspi_fcr & FCR_TXWATER_MASK) >> FCR_TXWATER_SHIFT;
+    uint8_t rx_watermark = (s->lpspi_fcr & FCR_RXWATER_MASK) >> FCR_RXWATER_SHIFT;
+
+    if (tx_word_count <= tx_watermark)
+    {
+        s->lpspi_sr |= LPSPI_SR_TDF;
+    }
+    else
+    {
+        s->lpspi_sr &= ~LPSPI_SR_TDF;
+    }
+
+    if (rx_word_count > rx_watermark)
+    {
+        s->lpspi_sr |= LPSPI_SR_RDF;
+    }
+    else
+    {
+        s->lpspi_sr &= ~LPSPI_SR_RDF;
+    }
+
     lpspi_update_status(s);
     if ((s->lpspi_sr & s->lpspi_ier) & (LPSPI_SR_TDF | LPSPI_SR_RDF))
     {

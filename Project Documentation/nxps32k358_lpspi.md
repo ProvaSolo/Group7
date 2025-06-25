@@ -32,6 +32,8 @@ The NXP S32K358 LPSPI (Low Power Serial Peripheral Interface) is a QEMU device m
 -   **FIFO Configuration**:
     -   `LPSPI_FIFO_WORD_DEPTH`: Depth of the FIFO in words.
     -   `LPSPI_FIFO_BYTE_CAPACITY`: Total FIFO capacity in bytes.
+    -   `FCR_TXWATER_MASK`: Mask for the TX FIFO watermark field.
+    -   `FCR_RXWATER_MASK`: Mask for the RX FIFO watermark field.
 
 ### Key Structures
 
@@ -91,12 +93,15 @@ The driver uses a macro `DB_PRINT_L` to conditionally emit debug logs. This macr
 
     -   **Status Register (`SR`) Update**:
 
-        -   Evaluates FIFO thresholds to set or clear relevant flags:
+        -   Evaluates FIFO thresholds to set or clear relevant flags based on the
+            programmed watermarks:
 
-            -   Sets the `TDF` (Transmit Data Flag) if there are at least 4 bytes of free space in the TX FIFO.
-            -   Clears the `TDF` flag if less than 4 bytes are free.
-            -   Sets the `RDF` (Receive Data Flag) if the RX FIFO contains at least 4 bytes of data.
-            -   Clears the `RDF` flag if less than 4 bytes are present.
+            -   Sets the `TDF` (Transmit Data Flag) when the number of words in
+                the TX FIFO is less than or equal to `TXWATER`.
+            -   Clears `TDF` when more words are present.
+            -   Sets the `RDF` (Receive Data Flag) when the RX FIFO contains more
+                words than the `RXWATER` threshold.
+            -   Clears `RDF` when the RX FIFO has fewer or equal words.
 
     -   **Receive Status Register (`RSR`) Update**:
 
@@ -120,8 +125,8 @@ The driver uses a macro `DB_PRINT_L` to conditionally emit debug logs. This macr
         -   Performs a bitwise AND between the `SR` (Status Register) and `IER` (Interrupt Enable Register) to identify active and enabled interrupt conditions.
         -   Specifically checks:
 
-            -   `LPSPI_SR_TDF` (Transmit Data Flag): Set if there is space in the TX FIFO.
-            -   `LPSPI_SR_RDF` (Receive Data Flag): Set if data is available in the RX FIFO.
+            -   `LPSPI_SR_TDF` (Transmit Data Flag): Set when the TX FIFO level is below `TXWATER`.
+            -   `LPSPI_SR_RDF` (Receive Data Flag): Set when the RX FIFO level exceeds `RXWATER`.
 
     -   **IRQ Line Control**:
 
@@ -422,12 +427,14 @@ The driver uses a macro `DB_PRINT_L` to conditionally emit debug logs. This macr
     -   TX FIFO has at least 1 word.
     -   RX FIFO has space for 1 word.
     -   Module is enabled (`MEN` bit set).
+-   Programmable watermarks (`TXWATER`/`RXWATER`) in `FCR` determine when the
+    `TDF` and `RDF` status flags assert.
 
 ### Interrupt Handling
 
--   Interrupts are triggered when:
-    -   TX FIFO has space available (`TDF`).
-    -   RX FIFO has data available (`RDF`).
+-   Interrupts are triggered when FIFO levels cross the watermarks:
+    -   TX FIFO drops below `TXWATER`, setting `TDF`.
+    -   RX FIFO rises above `RXWATER`, setting `RDF`.
 -   Enabled through the Interrupt Enable Register (`IER`).
 
 ### Chip Select Handling
