@@ -35,7 +35,30 @@ OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPSPIState, NXPS32K358_LPSPI)
 // Status Register (SR) bitmasks
 #define LPSPI_SR_TDF (1U << 0)
 #define LPSPI_SR_RDF (1U << 1)
+// Word, frame and transfer completion flags
+#define LPSPI_SR_WCF (1U << 8)
+#define LPSPI_SR_FCF (1U << 9)
+#define LPSPI_SR_TCF (1U << 10)
+// Error and data match flags
+#define LPSPI_SR_TEF (1U << 11)
+#define LPSPI_SR_REF (1U << 12)
+#define LPSPI_SR_DMF (1U << 13)
+// Module busy flag
 #define LPSPI_SR_MBF (1U << 24)
+
+// Interrupt Enable Register (IER) bitmasks
+#define LPSPI_IER_TDIE (1U << 0)
+#define LPSPI_IER_RDIE (1U << 1)
+#define LPSPI_IER_WCIE (1U << 8)
+#define LPSPI_IER_FCIE (1U << 9)
+#define LPSPI_IER_TCIE (1U << 10)
+#define LPSPI_IER_TEIE (1U << 11)
+#define LPSPI_IER_REIE (1U << 12)
+#define LPSPI_IER_DMIE (1U << 13)
+
+// DMA Enable Register (DER) bitmasks
+#define LPSPI_DER_TDDE (1U << 0)
+#define LPSPI_DER_RDDE (1U << 1)
 
 // Receive Status Register (RSR) bitmasks
 #define LPSPI_RSR_RXEMPTY (1U << 1)

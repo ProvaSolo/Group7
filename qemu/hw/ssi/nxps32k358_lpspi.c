@@ -58,6 +58,24 @@ static void lpspi_update_status(NXPS32K358LPSPIState *s)
         s->lpspi_sr &= ~LPSPI_SR_RDF;
     }
 
+    if (rx_word_count > 0)
+    {
+        s->lpspi_sr |= LPSPI_SR_WCF | LPSPI_SR_FCF;
+    }
+    else
+    {
+        s->lpspi_sr &= ~(LPSPI_SR_WCF | LPSPI_SR_FCF);
+    }
+
+    if (fifo8_is_empty(&s->tx_fifo) && !(s->lpspi_sr & LPSPI_SR_MBF))
+    {
+        s->lpspi_sr |= LPSPI_SR_TCF;
+    }
+    else
+    {
+        s->lpspi_sr &= ~LPSPI_SR_TCF;
+    }
+
     if (rx_word_count == 0)
     {
         s->lpspi_rsr |= LPSPI_RSR_RXEMPTY;
@@ -79,7 +97,16 @@ static void lpspi_update_status(NXPS32K358LPSPIState *s)
 static void lpspi_update_irq(NXPS32K358LPSPIState *s)
 {
     lpspi_update_status(s);
-    if ((s->lpspi_sr & s->lpspi_ier) & (LPSPI_SR_TDF | LPSPI_SR_RDF))
+    uint32_t mask = s->lpspi_ier;
+
+    if (s->lpspi_der & LPSPI_DER_TDDE) {
+        mask |= LPSPI_IER_TDIE;
+    }
+    if (s->lpspi_der & LPSPI_DER_RDDE) {
+        mask |= LPSPI_IER_RDIE;
+    }
+
+    if (s->lpspi_sr & mask)
     {
         qemu_set_irq(s->irq, 1);
     }
@@ -104,6 +131,9 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
     {
         DB_PRINT("Flush requested, but blocked. TX has %d bytes, RX has %d free.\n",
                  fifo8_num_used(&s->tx_fifo), fifo8_num_free(&s->rx_fifo));
+        if (fifo8_num_free(&s->rx_fifo) < 4) {
+            s->lpspi_sr |= LPSPI_SR_REF;
+        }
         lpspi_update_irq(s);
         return;
     }
@@ -118,6 +148,7 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
     DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
     qemu_set_irq(s->cs_lines[pcs], 0);
 
+    bool transferred = false;
     while ((fifo8_num_used(&s->tx_fifo) >= 4) && (fifo8_num_free(&s->rx_fifo) >= 4))
     {
         uint32_t tx_word = 0;
@@ -132,6 +163,13 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
         fifo8_push(&s->rx_fifo, (rx_word >> 8) & 0xFF);
         fifo8_push(&s->rx_fifo, (rx_word >> 16) & 0xFF);
         fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
+
+        transferred = true;
+        s->lpspi_sr |= LPSPI_SR_WCF;
+    }
+
+    if (transferred) {
+        s->lpspi_sr |= LPSPI_SR_FCF;
     }
 
     DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
@@ -285,6 +323,7 @@ static void nxps32k358_lpspi_write(void *opaque, hwaddr addr, uint64_t val64, un
             if (fifo8_num_free(&s->tx_fifo) < 4)
             {
                 qemu_log_mask(LOG_GUEST_ERROR, "%s: Write to full TX FIFO!\n", __func__);
+                s->lpspi_sr |= LPSPI_SR_TEF;
             }
             else
             {
