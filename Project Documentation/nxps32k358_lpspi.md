@@ -52,7 +52,6 @@ The NXP S32K358 LPSPI (Low Power Serial Peripheral Interface) is a QEMU device m
         -   `uint32_t lpspi_cfgr0`: Configuration Register 0.
         -   `uint32_t lpspi_cfgr1`: Configuration Register 1.
         -   `uint32_t lpspi_ccr`: Clock Configuration Register.
-        -   `uint32_t lpspi_ccr1`: Reserved for future use.
         -   `uint32_t lpspi_fcr`: FIFO Control Register.
         -   `uint32_t lpspi_fsr`: FIFO Status Register.
         -   `uint32_t lpspi_tcr`: Transmit Command Register.
