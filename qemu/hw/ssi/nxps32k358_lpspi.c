@@ -366,7 +366,7 @@ static const VMStateDescription vmstate_nxps32k358_lpspi = {
         VMSTATE_END_OF_LIST()}};
 
 static const Property nxps32k358_lpspi_properties[] = {
-    DEFINE_PROP_UINT8("num-cs-lines", NXPS32K358LPSPIState, num_cs_lines, 1),
+    DEFINE_PROP_UINT8("num-cs-lines", NXPS32K358LPSPIState, num_cs_lines, 4),
 };
 
 static void nxps32k358_lpspi_realize(DeviceState *dev, Error **errp)
