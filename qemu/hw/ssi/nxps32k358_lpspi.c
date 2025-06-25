@@ -25,6 +25,16 @@
 
 #define DB_PRINT(fmt, args...) DB_PRINT_L(1, fmt, ##args)
 
+/* Register bit helpers */
+#define TCR_CPHA (1U << 30)
+#define TCR_CPOL (1U << 31)
+
+#define CFGR1_AUTOPCS (1U << 2)
+#define CFGR1_PCSPOL_SHIFT 8
+#define CFGR1_PCSPOL_MASK (0xF << CFGR1_PCSPOL_SHIFT)
+
+#define CCR_SCKDIV_MASK 0xFF
+
 /**
  * Updates LPSPI status registers based on FIFO states.
  *
@@ -143,6 +153,13 @@ static void lpspi_update_irq(NXPS32K358LPSPIState *s)
     }
 }
 
+static void lpspi_update_clock(NXPS32K358LPSPIState *s)
+{
+    uint32_t div = s->lpspi_ccr & CCR_SCKDIV_MASK;
+    s->sck_divider = div;
+    DB_PRINT("Clock divider set to %u (frequency scaling not implemented)\n", div);
+}
+
 /**
     Flushes the TX FIFO of the LPSPI peripheral and performs a transfer burst.
 
@@ -172,8 +189,13 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
         return;
     }
 
-    DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
-    qemu_set_irq(s->cs_lines[pcs], 0);
+    int assert_level = (s->pcspol & (1 << pcs)) ? 1 : 0;
+    int deassert_level = assert_level ? 0 : 1;
+
+    if (s->autopcs) {
+        DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
+        qemu_set_irq(s->cs_lines[pcs], assert_level);
+    }
 
     bool transferred = false;
     while ((fifo8_num_used(&s->tx_fifo) >= 4) && (fifo8_num_free(&s->rx_fifo) >= 4))
@@ -205,8 +227,10 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
     }
     else
     {
-        DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
-        qemu_set_irq(s->cs_lines[pcs], 1);
+        if (s->autopcs) {
+            DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
+            qemu_set_irq(s->cs_lines[pcs], deassert_level);
+        }
     }
 
     if (fifo8_is_empty(&s->tx_fifo))
@@ -236,12 +260,18 @@ static void nxps32k358_lpspi_do_reset(NXPS32K358LPSPIState *s)
     s->lpspi_rsr = LPSPI_RSR_RXEMPTY;
     s->lpspi_rdr = 0x0;
 
+    s->spi_mode = 0;
+    s->autopcs = false;
+    s->pcspol = 0;
+    s->sck_divider = 0;
+
     fifo8_reset(&s->tx_fifo);
     fifo8_reset(&s->rx_fifo);
 
     for (int i = 0; i < s->num_cs_lines; ++i)
     {
-        qemu_set_irq(s->cs_lines[i], 1);
+        int deassert_level = (s->pcspol & (1 << i)) ? 0 : 1;
+        qemu_set_irq(s->cs_lines[i], deassert_level);
     }
 
     lpspi_update_irq(s);
@@ -341,6 +371,12 @@ static void nxps32k358_lpspi_write(void *opaque, hwaddr addr, uint64_t val64, un
 
     case S32K_LPSPI_TCR:
         s->lpspi_tcr = value;
+        {
+            bool cpha = value & TCR_CPHA;
+            bool cpol = value & TCR_CPOL;
+            s->spi_mode = (cpol << 1) | cpha;
+            DB_PRINT("SPI mode updated to %d via TCR\n", s->spi_mode);
+        }
         if (s->lpspi_cr & LPSPI_CR_MEN)
         {
             if (!(s->lpspi_sr & LPSPI_SR_MBF) && !fifo8_is_empty(&s->tx_fifo))
@@ -390,9 +426,17 @@ static void nxps32k358_lpspi_write(void *opaque, hwaddr addr, uint64_t val64, un
         break;
     case S32K_LPSPI_CFGR1:
         s->lpspi_cfgr1 = value;
+        s->autopcs = value & CFGR1_AUTOPCS;
+        s->pcspol = (value & CFGR1_PCSPOL_MASK) >> CFGR1_PCSPOL_SHIFT;
+        DB_PRINT("CFGR1 write autopcs=%d pcspol=0x%x\n", s->autopcs, s->pcspol);
+        for (int i = 0; i < s->num_cs_lines; ++i) {
+            int level = (s->pcspol & (1 << i)) ? 0 : 1;
+            qemu_set_irq(s->cs_lines[i], level);
+        }
         break;
     case S32K_LPSPI_CCR:
         s->lpspi_ccr = value;
+        lpspi_update_clock(s);
         break;
     case S32K_LPSPI_FCR:
         s->lpspi_fcr = value;
@@ -436,6 +480,10 @@ static const VMStateDescription vmstate_nxps32k358_lpspi = {
         VMSTATE_UINT32(lpspi_tdr, NXPS32K358LPSPIState),
         VMSTATE_UINT32(lpspi_rsr, NXPS32K358LPSPIState),
         VMSTATE_UINT32(lpspi_rdr, NXPS32K358LPSPIState),
+        VMSTATE_UINT8(spi_mode, NXPS32K358LPSPIState),
+        VMSTATE_BOOL(autopcs, NXPS32K358LPSPIState),
+        VMSTATE_UINT8(pcspol, NXPS32K358LPSPIState),
+        VMSTATE_UINT32(sck_divider, NXPS32K358LPSPIState),
         VMSTATE_END_OF_LIST()}};
 
 static const Property nxps32k358_lpspi_properties[] = {

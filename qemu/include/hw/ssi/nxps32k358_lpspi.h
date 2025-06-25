@@ -68,6 +68,17 @@ OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPSPIState, NXPS32K358_LPSPI)
 #define TCR_PCS_MASK (0x3 << TCR_PCS_SHIFT)
 /* Continuous transfer bit in the Transmit Command Register */
 #define TCR_CONT (1U << 23)
+/* Clock phase and polarity */
+#define TCR_CPHA (1U << 30)
+#define TCR_CPOL (1U << 31)
+
+/* CFGR1 fields */
+#define CFGR1_AUTOPCS (1U << 2)
+#define CFGR1_PCSPOL_SHIFT 8
+#define CFGR1_PCSPOL_MASK (0xF << CFGR1_PCSPOL_SHIFT)
+
+/* CCR fields */
+#define CCR_SCKDIV_MASK 0xFF
 
 /* FIFO Control Register field masks */
 #define FCR_TXWATER_SHIFT 0
@@ -109,6 +120,12 @@ struct NXPS32K358LPSPIState
     uint32_t lpspi_tdr;
     uint32_t lpspi_rsr;
     uint32_t lpspi_rdr;
+
+    /* Derived configuration */
+    uint8_t spi_mode;      /* 0-3 for SPI mode */
+    bool autopcs;          /* automatic PCS handling */
+    uint8_t pcspol;        /* polarity of chip select lines */
+    uint32_t sck_divider;  /* SCK divisor from CCR */
 };
 
 #endif // HW_NXP_S32K358_LPSPI_H
