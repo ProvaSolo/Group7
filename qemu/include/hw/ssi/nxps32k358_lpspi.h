@@ -68,6 +68,9 @@ OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPSPIState, NXPS32K358_LPSPI)
 #define TCR_PCS_MASK (0x3 << TCR_PCS_SHIFT)
 /* Continuous transfer bit in the Transmit Command Register */
 #define TCR_CONT (1U << 23)
+/* Masked transmit/receive bits in the Transmit Command Register */
+#define TCR_TXMSK (1U << 18)
+#define TCR_RXMSK (1U << 19)
 
 /* FIFO Control Register field masks */
 #define FCR_TXWATER_SHIFT 0
