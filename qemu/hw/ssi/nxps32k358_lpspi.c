@@ -411,3 +411,4 @@ static void nxps32k358_lpspi_register_types(void)
 }
 
 type_init(nxps32k358_lpspi_register_types)
+
