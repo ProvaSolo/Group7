@@ -40,9 +40,51 @@ OBJECT_DECLARE_SIMPLE_TYPE(NXPS32K358LPSPIState, NXPS32K358_LPSPI)
 // Receive Status Register (RSR) bitmasks
 #define LPSPI_RSR_RXEMPTY (1U << 1)
 
+// CFGR0 Register bits
+#define CFGR0_HREN (1U << 0)
+#define CFGR0_HRPOL (1U << 1)
+#define CFGR0_HRSEL (1U << 2)
+#define CFGR0_CIRFIFO (1U << 8)
+#define CFGR0_RDMO (1U << 9)
+
+// CFGR1 Register bits
+#define CFGR1_MASTER (1U << 0)
+#define CFGR1_SAMPLE (1U << 1)
+#define CFGR1_AUTOPCS (1U << 2)
+#define CFGR1_NOSTALL (1U << 3)
+#define CFGR1_PCSPOL_SHIFT 8
+#define CFGR1_PCSPOL_MASK (0xF << CFGR1_PCSPOL_SHIFT)
+#define CFGR1_MATCFG_SHIFT 16
+#define CFGR1_MATCFG_MASK (0x7 << CFGR1_MATCFG_SHIFT)
+#define CFGR1_PINCFG_SHIFT 24
+#define CFGR1_PINCFG_MASK (0x3 << CFGR1_PINCFG_SHIFT)
+
+// Clock Configuration Register (CCR) fields
+#define CCR_SCKDIV_SHIFT 0
+#define CCR_SCKDIV_MASK (0xFF << CCR_SCKDIV_SHIFT)
+#define CCR_DBT_SHIFT 8
+#define CCR_DBT_MASK (0xFF << CCR_DBT_SHIFT)
+#define CCR_PCSSCK_SHIFT 16
+#define CCR_PCSSCK_MASK (0xFF << CCR_PCSSCK_SHIFT)
+#define CCR_SCKPCS_SHIFT 24
+#define CCR_SCKPCS_MASK (0xFF << CCR_SCKPCS_SHIFT)
 // Transmit Command Register (TCR) bits and masks
+#define TCR_FRAMESZ_SHIFT 0
+#define TCR_FRAMESZ_MASK (0xFFF << TCR_FRAMESZ_SHIFT)
+#define TCR_WIDTH_SHIFT 12
+#define TCR_WIDTH_MASK (0x3 << TCR_WIDTH_SHIFT)
+#define TCR_TXMSK (1U << 18)
+#define TCR_RXMSK (1U << 19)
+#define TCR_CONTC (1U << 20)
+#define TCR_CONT (1U << 21)
+#define TCR_BYSW (1U << 22)
+#define TCR_LSBF (1U << 23)
 #define TCR_PCS_SHIFT 24
 #define TCR_PCS_MASK (0x3 << TCR_PCS_SHIFT)
+#define TCR_PRESCALE_SHIFT 27
+#define TCR_PRESCALE_MASK (0x7 << TCR_PRESCALE_SHIFT)
+#define TCR_CPHA (1U << 30)
+#define TCR_CPOL (1U << 31)
 
 // FIFO depth and capacity definitions
 #define LPSPI_FIFO_WORD_DEPTH 4
@@ -78,6 +120,9 @@ struct NXPS32K358LPSPIState
     uint32_t lpspi_tdr;
     uint32_t lpspi_rsr;
     uint32_t lpspi_rdr;
+
+    bool cs_active;
+    uint8_t spi_mode;
 };
 
 #endif // HW_NXP_S32K358_LPSPI_H

@@ -115,27 +115,49 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
         return;
     }
 
-    DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
-    qemu_set_irq(s->cs_lines[pcs], 0);
+    if (!s->cs_active)
+    {
+        DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
+        qemu_set_irq(s->cs_lines[pcs], 0);
+        s->cs_active = true;
+    }
 
     while ((fifo8_num_used(&s->tx_fifo) >= 4) && (fifo8_num_free(&s->rx_fifo) >= 4))
     {
         uint32_t tx_word = 0;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo);
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 8;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 16;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 24;
+        if (!(s->lpspi_tcr & TCR_TXMSK))
+        {
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo);
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 8;
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 16;
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 24;
+        }
+        else
+        {
+            /* Discard TX data when TXMSK is set */
+            fifo8_pop(&s->tx_fifo);
+            fifo8_pop(&s->tx_fifo);
+            fifo8_pop(&s->tx_fifo);
+            fifo8_pop(&s->tx_fifo);
+        }
 
         uint32_t rx_word = ssi_transfer(s->ssi, tx_word);
 
-        fifo8_push(&s->rx_fifo, rx_word & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 8) & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 16) & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
+        if (!(s->lpspi_tcr & TCR_RXMSK))
+        {
+            fifo8_push(&s->rx_fifo, rx_word & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 8) & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 16) & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
+        }
     }
 
-    DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
-    qemu_set_irq(s->cs_lines[pcs], 1);
+    if (!(s->lpspi_tcr & TCR_CONT) && (!(s->lpspi_tcr & TCR_CONTC) || fifo8_is_empty(&s->tx_fifo)))
+    {
+        DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
+        qemu_set_irq(s->cs_lines[pcs], 1);
+        s->cs_active = false;
+    }
 
     if (fifo8_is_empty(&s->tx_fifo))
     {
@@ -163,6 +185,8 @@ static void nxps32k358_lpspi_do_reset(NXPS32K358LPSPIState *s)
     s->lpspi_tdr = 0x0;
     s->lpspi_rsr = LPSPI_RSR_RXEMPTY;
     s->lpspi_rdr = 0x0;
+    s->cs_active = false;
+    s->spi_mode = 0;
 
     fifo8_reset(&s->tx_fifo);
     fifo8_reset(&s->rx_fifo);
@@ -269,6 +293,7 @@ static void nxps32k358_lpspi_write(void *opaque, hwaddr addr, uint64_t val64, un
 
     case S32K_LPSPI_TCR:
         s->lpspi_tcr = value;
+        s->spi_mode = ((value & TCR_CPOL) ? 2 : 0) | ((value & TCR_CPHA) ? 1 : 0);
         if (s->lpspi_cr & LPSPI_CR_MEN)
         {
             if (!(s->lpspi_sr & LPSPI_SR_MBF) && !fifo8_is_empty(&s->tx_fifo))
@@ -363,6 +388,8 @@ static const VMStateDescription vmstate_nxps32k358_lpspi = {
         VMSTATE_UINT32(lpspi_tdr, NXPS32K358LPSPIState),
         VMSTATE_UINT32(lpspi_rsr, NXPS32K358LPSPIState),
         VMSTATE_UINT32(lpspi_rdr, NXPS32K358LPSPIState),
+        VMSTATE_BOOL(cs_active, NXPS32K358LPSPIState),
+        VMSTATE_UINT8(spi_mode, NXPS32K358LPSPIState),
         VMSTATE_END_OF_LIST()}};
 
 static const Property nxps32k358_lpspi_properties[] = {
