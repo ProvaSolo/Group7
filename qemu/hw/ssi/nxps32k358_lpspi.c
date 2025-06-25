@@ -134,8 +134,15 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
         fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
     }
 
-    DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
-    qemu_set_irq(s->cs_lines[pcs], 1);
+    if ((s->lpspi_tcr & TCR_CONT) && fifo8_num_used(&s->tx_fifo) >= 4)
+    {
+        DB_PRINT("Keeping CS%d asserted for continuous transfer.\n", pcs);
+    }
+    else
+    {
+        DB_PRINT("De-asserting CS%d after transfer burst.\n", pcs);
+        qemu_set_irq(s->cs_lines[pcs], 1);
+    }
 
     if (fifo8_is_empty(&s->tx_fifo))
     {
