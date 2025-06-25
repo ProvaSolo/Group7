@@ -35,8 +35,8 @@
  */
 static void lpspi_update_status(NXPS32K358LPSPIState *s)
 {
-    uint8_t tx_word_count = fifo8_num_used(&s->tx_fifo) / 4;
-    uint8_t rx_word_count = fifo8_num_used(&s->rx_fifo) / 4;
+    uint8_t tx_word_count = (fifo8_num_used(&s->tx_fifo) / 4) & 0xF;
+    uint8_t rx_word_count = (fifo8_num_used(&s->rx_fifo) / 4) & 0xF;
 
     s->lpspi_fsr = (rx_word_count << 16) | (tx_word_count << 0);
 

@@ -81,13 +81,14 @@ The driver uses a macro `DB_PRINT_L` to conditionally emit debug logs. This macr
 
             -   **TX Word Count**: Computed by dividing the number of bytes used in the TX FIFO by 4.
             -   **RX Word Count**: Computed by dividing the number of bytes used in the RX FIFO by 4.
+            -   Both counts are masked with `0xF` to fit the 4-bit fields in `FSR`.
 
     -   **FIFO Status Register (`FSR`) Update**:
 
-        -   Encodes the word counts into the `FSR` register:
+        -   Encodes the word counts into the `FSR` register after masking:
 
-            -   Lower 16 bits: TX Word Count.
-            -   Upper 16 bits: RX Word Count.
+            -   Lower 16 bits: TX Word Count (masked with `0xF`).
+            -   Upper 16 bits: RX Word Count (masked with `0xF`).
 
     -   **Status Register (`SR`) Update**:
 
