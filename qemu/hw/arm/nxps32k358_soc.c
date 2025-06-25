@@ -418,6 +418,7 @@ static void nxps32k358_soc_realize(DeviceState *dev_soc, Error **errp)
     for (i = 0; i < NXP_NUM_LPSPIS; i++)
     {
         dev = DEVICE(&(s->lpspis[i]));
+        qdev_prop_set_uint8(dev, "num-cs-lines", 4);
         if (!sysbus_realize(SYS_BUS_DEVICE(&s->lpspis[i]), errp))
         {
             return;
