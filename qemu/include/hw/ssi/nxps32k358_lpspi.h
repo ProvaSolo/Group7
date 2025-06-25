@@ -72,8 +72,6 @@ struct NXPS32K358LPSPIState
     uint32_t lpspi_cfgr0;
     uint32_t lpspi_cfgr1;
     uint32_t lpspi_ccr;
-    uint32_t lpspi_ccr1;
-
     uint32_t lpspi_fcr;
     uint32_t lpspi_fsr;
     uint32_t lpspi_tcr;
