@@ -154,11 +154,15 @@ static void lpspi_update_irq(NXPS32K358LPSPIState *s)
  */
 static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
 {
-    if ((fifo8_num_used(&s->tx_fifo) < 4) || (fifo8_num_free(&s->rx_fifo) < 4))
+    bool txmsk = s->lpspi_tcr & TCR_TXMSK;
+    bool rxmsk = s->lpspi_tcr & TCR_RXMSK;
+
+    if ((!txmsk && fifo8_num_used(&s->tx_fifo) < 4) ||
+        (!rxmsk && fifo8_num_free(&s->rx_fifo) < 4))
     {
         DB_PRINT("Flush requested, but blocked. TX has %d bytes, RX has %d free.\n",
                  fifo8_num_used(&s->tx_fifo), fifo8_num_free(&s->rx_fifo));
-        if (fifo8_num_free(&s->rx_fifo) < 4) {
+        if (!rxmsk && fifo8_num_free(&s->rx_fifo) < 4) {
             s->lpspi_sr |= LPSPI_SR_REF;
         }
         lpspi_update_irq(s);
@@ -175,31 +179,44 @@ static void lpspi_flush_txfifo(NXPS32K358LPSPIState *s)
     DB_PRINT("Asserting CS%d for transfer burst.\n", pcs);
     qemu_set_irq(s->cs_lines[pcs], 0);
 
+    if (!(s->lpspi_sr & LPSPI_SR_MBF)) {
+        s->lpspi_sr |= LPSPI_SR_MBF;
+    }
+
     bool transferred = false;
-    while ((fifo8_num_used(&s->tx_fifo) >= 4) && (fifo8_num_free(&s->rx_fifo) >= 4))
+    while ((txmsk || fifo8_num_used(&s->tx_fifo) >= 4) &&
+           (rxmsk || fifo8_num_free(&s->rx_fifo) >= 4))
     {
         uint32_t tx_word = 0;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo);
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 8;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 16;
-        tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 24;
+        if (!txmsk) {
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo);
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 8;
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 16;
+            tx_word |= (uint32_t)fifo8_pop(&s->tx_fifo) << 24;
+        }
 
         uint32_t rx_word = ssi_transfer(s->ssi, tx_word);
 
-        fifo8_push(&s->rx_fifo, rx_word & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 8) & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 16) & 0xFF);
-        fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
+        if (!rxmsk) {
+            fifo8_push(&s->rx_fifo, rx_word & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 8) & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 16) & 0xFF);
+            fifo8_push(&s->rx_fifo, (rx_word >> 24) & 0xFF);
+        }
 
         transferred = true;
         s->lpspi_sr |= LPSPI_SR_WCF;
+
+        if (txmsk) {
+            break;
+        }
     }
 
     if (transferred) {
         s->lpspi_sr |= LPSPI_SR_FCF;
     }
 
-    if ((s->lpspi_tcr & TCR_CONT) && fifo8_num_used(&s->tx_fifo) >= 4)
+    if ((s->lpspi_tcr & TCR_CONT) && (txmsk || fifo8_num_used(&s->tx_fifo) >= 4))
     {
         DB_PRINT("Keeping CS%d asserted for continuous transfer.\n", pcs);
     }
